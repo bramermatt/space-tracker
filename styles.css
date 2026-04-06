@@ -26,7 +26,10 @@ body {
   position: fixed;
   inset: 0;
   pointer-events: none;
-  background-image: linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-image: linear-gradient(
+    rgba(255, 255, 255, 0.03) 1px,
+    transparent 1px
+  );
   background-size: 100% 3px;
   opacity: 0.25;
   z-index: 5;
@@ -37,7 +40,7 @@ body {
   padding: 14px;
   display: grid;
   gap: 12px;
-  grid-template-columns: minmax(14rem, 19rem) minmax(0, 1fr) minmax(16rem, 22rem);
+  grid-template-columns: 20rem 1fr 24rem;
   grid-template-rows: auto 1fr auto;
   grid-template-areas:
     "top top top"
@@ -68,17 +71,10 @@ h2 {
   font-weight: 600;
 }
 
-h3 {
-  margin: 0 0 10px;
-  font-size: 0.82rem;
-  color: var(--amber);
-  letter-spacing: 0.08em;
-}
-
 .top-bar {
   grid-area: top;
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: 1fr 1fr 1fr auto;
   gap: 8px;
   align-items: center;
 }
@@ -94,10 +90,8 @@ h3 {
 }
 
 .value {
-  font-size: 1.03rem;
+  font-size: 1.1rem;
   color: var(--text);
-  min-width: 0;
-  overflow-wrap: anywhere;
 }
 
 .mission-name {
@@ -110,13 +104,11 @@ h3 {
   color: var(--primary);
 }
 
-.status.warning,
-#nasa-link-state.warning {
+.status.warning {
   color: var(--amber);
 }
 
-.status.critical,
-#nasa-link-state.critical {
+.status.critical {
   color: var(--red);
   text-shadow: 0 0 8px rgba(255, 77, 77, 0.4);
 }
@@ -127,8 +119,6 @@ h3 {
   display: flex;
   gap: 8px;
   align-items: center;
-  grid-column: 1 / -1;
-  justify-self: start;
 }
 
 .cursor {
@@ -194,15 +184,11 @@ h3 {
 
 .center-panel {
   grid-area: center;
-  display: grid;
-  gap: 12px;
-  align-content: start;
-  min-width: 0;
 }
 
 .telemetry-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(170px, 1fr));
+  grid-template-columns: repeat(2, minmax(180px, 1fr));
   gap: 12px;
 }
 
@@ -221,57 +207,19 @@ h3 {
 }
 
 .metric-value {
-  font-size: clamp(1.4rem, 3.4vw, 2rem);
+  font-size: 2rem;
   color: var(--primary);
   font-variant-numeric: tabular-nums;
 }
 
-.metric-text {
-  font-size: clamp(0.85rem, 2.2vw, 1rem);
-  overflow-wrap: anywhere;
+.metric.alert .metric-value,
+.metric.alert .metric-unit {
+  color: var(--red);
 }
 
 .metric-unit {
-  font-size: 0.78rem;
+  font-size: 0.8rem;
   color: #a5b3ae;
-  text-transform: uppercase;
-}
-
-.subpanel {
-  border: 1px solid #202020;
-  background: #101010;
-  padding: 10px;
-}
-
-.dense-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(180px, 1fr));
-  gap: 8px;
-}
-
-.dense-item {
-  border: 1px solid #222;
-  background: #131313;
-  padding: 8px;
-  display: grid;
-  gap: 6px;
-  min-height: 64px;
-}
-
-.dense-item span {
-  color: var(--muted);
-  font-size: 0.68rem;
-}
-
-.dense-item strong {
-  color: var(--text);
-  font-size: 0.88rem;
-  font-weight: 600;
-  overflow-wrap: anywhere;
-}
-
-.nasa-grid .dense-item strong {
-  color: var(--primary);
 }
 
 .right-panel {
@@ -279,7 +227,6 @@ h3 {
   display: grid;
   grid-template-rows: auto 1fr;
   min-height: 0;
-  min-width: 0;
 }
 
 .event-log {
@@ -337,7 +284,7 @@ h3 {
   color: var(--red);
 }
 
-@media (max-width: 1320px) {
+@media (max-width: 1080px) {
   .console {
     grid-template-columns: 1fr;
     grid-template-areas:
@@ -346,44 +293,13 @@ h3 {
       "left"
       "right"
       "bottom";
-    min-height: auto;
   }
 
   .top-bar {
-    grid-template-columns: repeat(2, minmax(145px, 1fr));
+    grid-template-columns: 1fr 1fr;
   }
 
   .systems-grid {
     grid-template-columns: repeat(2, minmax(140px, 1fr));
-  }
-}
-
-@media (max-width: 720px) {
-  .console {
-    padding: 8px;
-    gap: 8px;
-  }
-
-  .panel {
-    padding: 10px;
-  }
-
-  .top-bar {
-    grid-template-columns: 1fr;
-  }
-
-  .telemetry-grid,
-  .dense-grid,
-  .systems-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .value,
-  .metric-value {
-    word-break: break-word;
-  }
-
-  .event-log {
-    max-height: 40vh;
   }
 }
