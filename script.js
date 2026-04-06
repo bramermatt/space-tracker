@@ -1,5 +1,5 @@
 const SECOND = 1000;
-const NASA_API_KEY = "DEMO_KEY";
+
 const missionStart = new Date("2026-04-01T22:35:00Z");
 
 const phases = [
@@ -11,8 +11,7 @@ const phases = [
       velocity: [0, 17000],
       distance: [0, 120],
       altitude: [0, 115],
-      comms: "ASCENT VOICE + TELEMETRY",
-      flightMode: "ASCENT GUIDANCE"
+      comms: "ASCENT VOICE + TELEMETRY"
     },
     events: [
       { offset: 10, message: "Main engine ignition confirmed" },
@@ -28,8 +27,7 @@ const phases = [
       velocity: [17000, 17600],
       distance: [120, 3800],
       altitude: [115, 140],
-      comms: "NEAR-EARTH RELAY",
-      flightMode: "ORBIT OPS"
+      comms: "NEAR-EARTH RELAY"
     },
     events: [
       { offset: 60, message: "Orbit insertion confirmed" },
@@ -44,8 +42,7 @@ const phases = [
       velocity: [17600, 24700],
       distance: [3800, 21000],
       altitude: [140, 620],
-      comms: "DSN TRANSFER",
-      flightMode: "TLI BURN"
+      comms: "DSN TRANSFER"
     },
     events: [
       { offset: 90, message: "TLI burn initiated" },
@@ -61,8 +58,7 @@ const phases = [
       velocity: [24700, 3400],
       distance: [21000, 215000],
       altitude: [620, 190000],
-      comms: "DEEP SPACE NETWORK",
-      flightMode: "CRUISE"
+      comms: "DEEP SPACE NETWORK"
     },
     events: [
       { offset: 5 * 60 * 60, message: "Mid-course correction #1 complete" },
@@ -77,8 +73,7 @@ const phases = [
       velocity: [3400, 5800],
       distance: [215000, 239000],
       altitude: [190000, 62],
-      comms: "LUNAR FAR-SIDE ROUTING",
-      flightMode: "LUNAR NAV"
+      comms: "LUNAR FAR-SIDE ROUTING"
     },
     events: [
       { offset: 2 * 60 * 60, message: "Closest approach to Moon" },
@@ -93,8 +88,7 @@ const phases = [
       velocity: [5800, 24800],
       distance: [239000, 3200],
       altitude: [190000, 85],
-      comms: "DSN RETURN LINK",
-      flightMode: "EARTH RETURN"
+      comms: "DSN RETURN LINK"
     },
     events: [
       { offset: 4 * 60 * 60, message: "Return trajectory trim burn nominal" },
@@ -109,8 +103,7 @@ const phases = [
       velocity: [24800, 1300],
       distance: [3200, 50],
       altitude: [85, 8],
-      comms: "BLACKOUT / REACQ",
-      flightMode: "ENTRY GUIDANCE"
+      comms: "BLACKOUT / REACQ"
     },
     events: [
       { offset: 120, message: "Reentry communications blackout" },
@@ -125,8 +118,7 @@ const phases = [
       velocity: [1300, 0],
       distance: [50, 0],
       altitude: [8, 0],
-      comms: "RECOVERY NET",
-      flightMode: "RECOVERY"
+      comms: "RECOVERY NET"
     },
     events: [
       { offset: 5 * 60, message: "Main parachutes deployed" },
@@ -136,61 +128,40 @@ const phases = [
   }
 ];
 
-const systemDefinitions = ["Propulsion", "Life Support", "Navigation", "Power"];
+const systemDefinitions = [
+  "Propulsion",
+  "Life Support",
+  "Navigation",
+  "Power"
+];
 
 const state = {
   loggedEvents: new Set(),
   displayed: {
     velocity: 0,
     distance: 0,
-    altitude: 0,
-    acceleration: 0,
-    trajectoryError: 0,
-    fuel: 100,
-    power: 100,
-    pressure: 14.7,
-    cabinTemp: 72,
-    radiation: 0.12,
-    signalDelay: 0
+    altitude: 0
   }
 };
 
 const ui = {
   missionTime: document.getElementById("mission-time"),
   status: document.getElementById("system-status"),
-  nasaLinkState: document.getElementById("nasa-link-state"),
   timeline: document.getElementById("timeline-list"),
   velocity: document.getElementById("velocity"),
   distance: document.getElementById("distance"),
   altitude: document.getElementById("altitude"),
   comms: document.getElementById("comms"),
   log: document.getElementById("event-log"),
-  systemsGrid: document.getElementById("systems-grid"),
-  acceleration: document.getElementById("acceleration"),
-  trajectoryError: document.getElementById("trajectory-error"),
-  fuel: document.getElementById("fuel"),
-  power: document.getElementById("power"),
-  pressure: document.getElementById("pressure"),
-  cabinTemp: document.getElementById("cabin-temp"),
-  radiation: document.getElementById("radiation"),
-  signalDelay: document.getElementById("signal-delay"),
-  dsnNode: document.getElementById("dsn-node"),
-  flightMode: document.getElementById("flight-mode"),
-  apodTitle: document.getElementById("apod-title"),
-  apodDate: document.getElementById("apod-date"),
-  solarEvents: document.getElementById("solar-events"),
-  nasaUpdated: document.getElementById("nasa-updated")
+  systemsGrid: document.getElementById("systems-grid")
 };
 
 function init() {
   renderTimeline();
   renderSystems();
   addEvent("T+00:00:00", "Mission console online");
-  addEvent("T+00:00:00", "NASA feed handshake initiated");
   tick();
   setInterval(tick, SECOND);
-  fetchNasaFeeds();
-  setInterval(fetchNasaFeeds, 10 * 60 * SECOND);
 }
 
 function tick() {
@@ -200,7 +171,6 @@ function tick() {
   updateMissionClock(elapsedSeconds);
   updateTimeline(currentPhase.index);
   updateTelemetry(elapsedSeconds, currentPhase);
-  updateEngineering(elapsedSeconds, currentPhase);
   processEvents(elapsedSeconds);
   updateSystemStatus(currentPhase.name);
 }
@@ -251,49 +221,6 @@ function updateTelemetry(elapsedSeconds, currentPhase) {
   ui.distance.textContent = Math.round(state.displayed.distance).toLocaleString("en-US");
   ui.altitude.textContent = Math.max(0, Math.round(state.displayed.altitude)).toLocaleString("en-US");
   ui.comms.textContent = phase.telemetry.comms;
-  ui.flightMode.textContent = phase.telemetry.flightMode;
-}
-
-function updateEngineering(elapsedSeconds, currentPhase) {
-  const phase = currentPhase.phase;
-  const p = progressInPhase(elapsedSeconds, phase);
-
-  const phaseDrift = Math.sin(elapsedSeconds / 23) * 0.08;
-  const targetAcceleration = Math.max(0.02, Math.abs((phase.telemetry.velocity[1] - phase.telemetry.velocity[0]) / 18000) + phaseDrift);
-  const targetTrajectoryError = Math.abs(Math.sin(elapsedSeconds / 40) * 0.35);
-  const targetFuel = Math.max(7, 100 - (elapsedSeconds / (8.8 * 24 * 3600)) * 100);
-  const targetPower = Math.max(42, 99 - p * 6 - currentPhase.index * 0.5 + Math.sin(elapsedSeconds / 180) * 0.2);
-  const targetPressure = 14.7 + Math.sin(elapsedSeconds / 120) * 0.12;
-  const targetCabinTemp = 71.8 + Math.sin(elapsedSeconds / 90) * 1.6;
-  const targetRadiation = 0.08 + currentPhase.index * 0.05 + Math.abs(Math.sin(elapsedSeconds / 54)) * 0.08;
-  const targetSignalDelay = Math.max(0.03, state.displayed.distance / 186282);
-
-  state.displayed.acceleration = smooth(state.displayed.acceleration, targetAcceleration, 0.2);
-  state.displayed.trajectoryError = smooth(state.displayed.trajectoryError, targetTrajectoryError, 0.22);
-  state.displayed.fuel = smooth(state.displayed.fuel, targetFuel, 0.06);
-  state.displayed.power = smooth(state.displayed.power, targetPower, 0.2);
-  state.displayed.pressure = smooth(state.displayed.pressure, targetPressure, 0.2);
-  state.displayed.cabinTemp = smooth(state.displayed.cabinTemp, targetCabinTemp, 0.2);
-  state.displayed.radiation = smooth(state.displayed.radiation, targetRadiation, 0.16);
-  state.displayed.signalDelay = smooth(state.displayed.signalDelay, targetSignalDelay, 0.3);
-
-  ui.acceleration.textContent = `${state.displayed.acceleration.toFixed(2)} g`;
-  ui.trajectoryError.textContent = `${state.displayed.trajectoryError.toFixed(2)}°`;
-  ui.fuel.textContent = `${state.displayed.fuel.toFixed(1)}%`;
-  ui.power.textContent = `${state.displayed.power.toFixed(1)}%`;
-  ui.pressure.textContent = `${state.displayed.pressure.toFixed(2)} psi`;
-  ui.cabinTemp.textContent = `${state.displayed.cabinTemp.toFixed(1)} °F`;
-  ui.radiation.textContent = `${state.displayed.radiation.toFixed(2)} mSv/h`;
-  ui.signalDelay.textContent = `${state.displayed.signalDelay.toFixed(2)} s`;
-
-  ui.dsnNode.textContent = getDsnNode(currentPhase.index);
-}
-
-function getDsnNode(phaseIndex) {
-  if (phaseIndex <= 1) return "GOLDSTONE DSS-24";
-  if (phaseIndex <= 3) return "MADRID DSS-65";
-  if (phaseIndex <= 5) return "CANBERRA DSS-34";
-  return "GOLDSTONE DSS-14";
 }
 
 function renderTimeline() {
@@ -400,51 +327,6 @@ function updateSystemStatus(phaseName) {
 
     stateLabel.textContent = "NOMINAL";
   });
-}
-
-async function fetchNasaFeeds() {
-  const nowStamp = new Date().toISOString().replace("T", " ").slice(0, 19) + " UTC";
-
-  try {
-    const apodResponse = await fetch(`https://api.nasa.gov/planetary/apod?api_key=${NASA_API_KEY}`);
-    if (!apodResponse.ok) {
-      throw new Error("APOD feed unavailable");
-    }
-
-    const apodData = await apodResponse.json();
-    ui.apodTitle.textContent = apodData.title || "No title available";
-    ui.apodDate.textContent = apodData.date || "Unknown";
-
-    const endDate = new Date();
-    const startDate = new Date(Date.now() - 7 * 24 * 3600 * SECOND);
-    const donkiUrl = `https://api.nasa.gov/DONKI/notifications?type=all&startDate=${formatDate(startDate)}&endDate=${formatDate(endDate)}&api_key=${NASA_API_KEY}`;
-
-    const donkiResponse = await fetch(donkiUrl);
-    if (donkiResponse.ok) {
-      const donkiData = await donkiResponse.json();
-      ui.solarEvents.textContent = Array.isArray(donkiData) ? `${donkiData.length} notifications` : "0 notifications";
-    } else {
-      ui.solarEvents.textContent = "DONKI unavailable";
-    }
-
-    ui.nasaUpdated.textContent = nowStamp;
-    ui.nasaLinkState.textContent = "SYNC ACTIVE";
-    ui.nasaLinkState.classList.remove("warning", "critical");
-    addEvent(formatMissionTime(Math.floor((Date.now() - missionStart.getTime()) / SECOND)), "NASA data feeds synchronized");
-  } catch (error) {
-    ui.apodTitle.textContent = "NASA feed timeout";
-    ui.apodDate.textContent = "--";
-    ui.solarEvents.textContent = "Retry in 10 min";
-    ui.nasaUpdated.textContent = nowStamp;
-    ui.nasaLinkState.textContent = "SYNC DEGRADED";
-    ui.nasaLinkState.classList.remove("critical");
-    ui.nasaLinkState.classList.add("warning");
-    addEvent(formatMissionTime(Math.floor((Date.now() - missionStart.getTime()) / SECOND)), "NASA feed degraded - local simulation continues");
-  }
-}
-
-function formatDate(date) {
-  return date.toISOString().slice(0, 10);
 }
 
 init();
