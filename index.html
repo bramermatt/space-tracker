@@ -1,130 +1,117 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Artemis II Mission Tracker - NASA Data</title>
-    <link rel="stylesheet" href="styles.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ARTEMIS II // Mission Control Console</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <header>
-        <div class="live-header">
-            <div class="live-status">
-                <span class="live-dot">●</span> Artemis II LIVE - NASA Data Feed
-            </div>
-            <button class="nasa-eyes-btn" onclick="toggleNASAEyes()">🚀 NASA's Eyes</button>
-            <button class="toggle-summary" id="summaryToggle" onclick="toggleSummaryMode()">📖 Plain Text</button>
-        </div>
-        <h1>Artemis II Mission Tracker</h1>
-        <div class="mission-times">
-            <div class="time-item">
-                <span class="label">LAUNCH</span>
-                <span class="value">1 Apr 2026 22:35 UTC</span>
-            </div>
-            <div class="time-item">
-                <span class="label">SPLASHDOWN</span>
-                <span class="value">11 Apr 2026 00:21 UTC</span>
-            </div>
-            <div class="time-item">
-                <span class="label">DURATION</span>
-                <span class="value">9d 2h</span>
-            </div>
-            <div class="time-item">
-                <span class="label">MET</span>
-                <span class="value" id="met-timer">T+4d 02:48:16</span>
-            </div>
-        </div>
+  <div class="crt-overlay" aria-hidden="true"></div>
+
+  <div class="console" role="application" aria-label="Artemis II mission control dashboard">
+    <header class="top-bar panel">
+      <div class="top-block">
+        <span class="label">MISSION</span>
+        <span class="value mission-name">ARTEMIS II</span>
+      </div>
+
+      <div class="top-block">
+        <span class="label">MISSION ELAPSED TIME</span>
+        <span class="value" id="mission-time">T+00:00:00</span>
+      </div>
+
+      <div class="top-block">
+        <span class="label">SYSTEM STATUS</span>
+        <span class="value status" id="system-status">NOMINAL</span>
+      </div>
+
+      <div class="top-block">
+        <span class="label">NASA DATA LINK</span>
+        <span class="value" id="nasa-link-state">SYNC PENDING</span>
+      </div>
+
+      <div class="cursor-wrap" aria-hidden="true">
+        <span>CONSOLE LINK</span>
+        <span class="cursor"></span>
+      </div>
     </header>
 
-    <div class="layout">
-        <aside id="page-nav" class="page-nav">
-            <div class="nav-header">
-                <h2>Contents</h2>
-                <button class="close-nav" onclick="toggleNav()">×</button>
-            </div>
-            <nav>
-                <a href="#mission-overview" onclick="closeNav()">Mission Overview</a>
-                <a href="#crew" onclick="closeNav()">Crew</a>
-                <a href="#timeline" onclick="closeNav()">Mission Timeline</a>
-                <a href="#position" onclick="closeNav()">Current Position</a>
-                <a href="#telemetry" onclick="closeNav()">Telemetry</a>
-                <a href="#livestream" onclick="closeNav()">Live Stream</a>
-                <a href="#resources" onclick="closeNav()">Resources</a>
-                <a href="#live-data" onclick="closeNav()">Live Mission Data</a>
-            </nav>
-        </aside>
+    <aside class="left-panel panel">
+      <h2>MISSION TIMELINE</h2>
+      <ol id="timeline-list" class="timeline"></ol>
+    </aside>
 
-        <main>
-            <section id="mission-overview">
-                <h2>Mission Overview</h2>
-                <div id="overview-content">
-                    <!-- Mission data from NASA -->
-                </div>
-            </section>
+    <main class="center-panel panel">
+      <h2>LIVE TELEMETRY // PRIMARY CONSOLE</h2>
 
-        <section id="crew">
-            <h2>Crew</h2>
-            <div id="crew-content">
-                <!-- Crew data from NASA -->
-            </div>
-        </section>
+      <div class="telemetry-grid">
+        <div class="metric">
+          <span class="metric-label">VELOCITY</span>
+          <span class="metric-value" id="velocity">0</span>
+          <span class="metric-unit">mph</span>
+        </div>
 
-        <section id="timeline">
-            <h2>Mission Timeline</h2>
-            <div id="timeline-content">
-                <!-- Timeline data from NASA -->
-            </div>
-        </section>
+        <div class="metric">
+          <span class="metric-label">DISTANCE FROM EARTH</span>
+          <span class="metric-value" id="distance">0</span>
+          <span class="metric-unit">mi</span>
+        </div>
 
-        <section id="position">
-            <h2>Current Position</h2>
-            <div id="position-content">
-                <!-- Position data from NASA -->
-            </div>
-        </section>
+        <div class="metric">
+          <span class="metric-label">ALTITUDE</span>
+          <span class="metric-value" id="altitude">0</span>
+          <span class="metric-unit">mi</span>
+        </div>
 
-        <section id="telemetry">
-            <h2>Telemetry</h2>
-            <div id="telemetry-content">
-                <!-- Telemetry data from NASA -->
-            </div>
-        </section>
+        <div class="metric" id="comms-card">
+          <span class="metric-label">COMMUNICATION STATUS</span>
+          <span class="metric-value metric-text" id="comms">LOCKED</span>
+          <span class="metric-unit">deep space network</span>
+        </div>
+      </div>
 
-        <!-- <section id="media">
-            <h2>Media</h2>
-            <div id="media-content">
-            </div>
-        </section> -->
+      <section class="subpanel">
+        <h3>ENGINEERING CHANNEL</h3>
+        <div class="dense-grid">
+          <div class="dense-item"><span>ACCELERATION</span><strong id="acceleration">0.00 g</strong></div>
+          <div class="dense-item"><span>TRAJECTORY ERROR</span><strong id="trajectory-error">0.00°</strong></div>
+          <div class="dense-item"><span>FUEL REMAINING</span><strong id="fuel">100.0%</strong></div>
+          <div class="dense-item"><span>POWER RESERVE</span><strong id="power">100.0%</strong></div>
+          <div class="dense-item"><span>CABIN PRESSURE</span><strong id="pressure">14.7 psi</strong></div>
+          <div class="dense-item"><span>CABIN TEMP</span><strong id="cabin-temp">72.0 °F</strong></div>
+          <div class="dense-item"><span>RADIATION DOSE</span><strong id="radiation">0.00 mSv/h</strong></div>
+          <div class="dense-item"><span>SIGNAL DELAY</span><strong id="signal-delay">0.00 s</strong></div>
+          <div class="dense-item"><span>DSN ANTENNA</span><strong id="dsn-node">GOLDSTONE DSS-24</strong></div>
+          <div class="dense-item"><span>FLIGHT MODE</span><strong id="flight-mode">ASCENT GUIDANCE</strong></div>
+        </div>
+      </section>
 
-        <section id="livestream">
-            <h2>NASA Live Stream</h2>
-            <div id="livestream-content">
-                <!-- NASA's YouTube live stream -->
-            </div>
-        </section>
-
-        <section id="resources">
-            <h2>NASA Resources & Links</h2>
-            <div id="resources-content">
-                <!-- Links to NASA resources -->
-            </div>
-        </section>
-
-        <section id="live-data">
-            <h2>Live Mission Data - NASA Sources</h2>
-            <div id="live-data-content">
-                <!-- Comprehensive NASA data -->
-            </div>
-        </section>
+      <section class="subpanel">
+        <h3>NASA LIVE FEEDS</h3>
+        <div class="dense-grid nasa-grid">
+          <div class="dense-item"><span>APOD TITLE</span><strong id="apod-title">Loading...</strong></div>
+          <div class="dense-item"><span>APOD DATE</span><strong id="apod-date">----</strong></div>
+          <div class="dense-item"><span>SOLAR EVENTS (7D)</span><strong id="solar-events">Loading...</strong></div>
+          <div class="dense-item"><span>FEED LAST UPDATE</span><strong id="nasa-updated">Awaiting sync</strong></div>
+        </div>
+      </section>
     </main>
-    </div>
 
-    <button id="menu-toggle" class="menu-toggle" onclick="toggleNav()" aria-label="Open contents">☰</button>
+    <aside class="right-panel panel">
+      <h2>EVENT LOG</h2>
+      <div class="event-log" id="event-log" aria-live="polite"></div>
+    </aside>
 
-    <footer>
-        <p>Data provided by NASA | <a href="https://api.nasa.gov/" target="_blank">NASA APIs</a> | <a href="https://www.nasa.gov/" target="_blank">NASA.gov</a></p>
-    </footer>
+    <section class="bottom-panel panel">
+      <h2>SYSTEMS STATUS GRID</h2>
+      <div class="systems-grid" id="systems-grid"></div>
+    </section>
+  </div>
 
-    <script src="script.js"></script>
+  <script src="script.js"></script>
 </body>
 </html>

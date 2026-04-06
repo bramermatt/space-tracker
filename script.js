@@ -1,660 +1,450 @@
-// script.js
-document.addEventListener('DOMContentLoaded', function() {
-    loadMissionOverview();
-    loadCrew();
-    loadTimeline();
-    loadPosition();
-    loadTelemetry();
-    loadMedia();
-    loadLiveStream();
-    loadResources();
-    loadLiveData();
-    startMETTimer();
-    updateProgress();
-    updatePositionData();
-    startLiveDataUpdates();
-    initSummaryPanel();
-});
+const SECOND = 1000;
+const NASA_API_KEY = "DEMO_KEY";
+const missionStart = new Date("2026-04-01T22:35:00Z");
 
-let summaryMode = false;
+const phases = [
+  {
+    name: "Launch",
+    startSeconds: 0,
+    durationSeconds: 8 * 60,
+    telemetry: {
+      velocity: [0, 17000],
+      distance: [0, 120],
+      altitude: [0, 115],
+      comms: "ASCENT VOICE + TELEMETRY",
+      flightMode: "ASCENT GUIDANCE"
+    },
+    events: [
+      { offset: 10, message: "Main engine ignition confirmed" },
+      { offset: 120, message: "Max-Q passed" },
+      { offset: 470, message: "Orion separation nominal" }
+    ]
+  },
+  {
+    name: "Earth Orbit",
+    startSeconds: 8 * 60,
+    durationSeconds: 2 * 60 * 60,
+    telemetry: {
+      velocity: [17000, 17600],
+      distance: [120, 3800],
+      altitude: [115, 140],
+      comms: "NEAR-EARTH RELAY",
+      flightMode: "ORBIT OPS"
+    },
+    events: [
+      { offset: 60, message: "Orbit insertion confirmed" },
+      { offset: 3300, message: "Systems checkout complete" }
+    ]
+  },
+  {
+    name: "Translunar Injection (TLI)",
+    startSeconds: 2 * 60 * 60 + 8 * 60,
+    durationSeconds: 22 * 60,
+    telemetry: {
+      velocity: [17600, 24700],
+      distance: [3800, 21000],
+      altitude: [140, 620],
+      comms: "DSN TRANSFER",
+      flightMode: "TLI BURN"
+    },
+    events: [
+      { offset: 90, message: "TLI burn initiated" },
+      { offset: 1080, message: "TLI burn complete" },
+      { offset: 1200, message: "Trajectory nominal" }
+    ]
+  },
+  {
+    name: "Coast",
+    startSeconds: 2 * 60 * 60 + 30 * 60,
+    durationSeconds: 3 * 24 * 60 * 60,
+    telemetry: {
+      velocity: [24700, 3400],
+      distance: [21000, 215000],
+      altitude: [620, 190000],
+      comms: "DEEP SPACE NETWORK",
+      flightMode: "CRUISE"
+    },
+    events: [
+      { offset: 5 * 60 * 60, message: "Mid-course correction #1 complete" },
+      { offset: 42 * 60 * 60, message: "Crew sleep cycle nominal" }
+    ]
+  },
+  {
+    name: "Lunar Flyby",
+    startSeconds: 3 * 24 * 60 * 60 + 2 * 60 * 60 + 30 * 60,
+    durationSeconds: 9 * 60 * 60,
+    telemetry: {
+      velocity: [3400, 5800],
+      distance: [215000, 239000],
+      altitude: [190000, 62],
+      comms: "LUNAR FAR-SIDE ROUTING",
+      flightMode: "LUNAR NAV"
+    },
+    events: [
+      { offset: 2 * 60 * 60, message: "Closest approach to Moon" },
+      { offset: 4 * 60 * 60, message: "Lunar imaging sequence complete" }
+    ]
+  },
+  {
+    name: "Return Trajectory",
+    startSeconds: 3 * 24 * 60 * 60 + 11 * 60 * 60 + 2 * 60 * 60 + 30 * 60,
+    durationSeconds: 4 * 24 * 60 * 60,
+    telemetry: {
+      velocity: [5800, 24800],
+      distance: [239000, 3200],
+      altitude: [190000, 85],
+      comms: "DSN RETURN LINK",
+      flightMode: "EARTH RETURN"
+    },
+    events: [
+      { offset: 4 * 60 * 60, message: "Return trajectory trim burn nominal" },
+      { offset: 54 * 60 * 60, message: "Entry interface targeting update" }
+    ]
+  },
+  {
+    name: "Reentry",
+    startSeconds: 7 * 24 * 60 * 60 + 11 * 60 * 60 + 2 * 60 * 60 + 30 * 60,
+    durationSeconds: 26 * 60,
+    telemetry: {
+      velocity: [24800, 1300],
+      distance: [3200, 50],
+      altitude: [85, 8],
+      comms: "BLACKOUT / REACQ",
+      flightMode: "ENTRY GUIDANCE"
+    },
+    events: [
+      { offset: 120, message: "Reentry communications blackout" },
+      { offset: 1100, message: "Comms reacquired" }
+    ]
+  },
+  {
+    name: "Splashdown",
+    startSeconds: 7 * 24 * 60 * 60 + 11 * 60 * 60 + 28 * 60 + 2 * 60 * 60 + 30 * 60,
+    durationSeconds: 24 * 60 * 60,
+    telemetry: {
+      velocity: [1300, 0],
+      distance: [50, 0],
+      altitude: [8, 0],
+      comms: "RECOVERY NET",
+      flightMode: "RECOVERY"
+    },
+    events: [
+      { offset: 5 * 60, message: "Main parachutes deployed" },
+      { offset: 16 * 60, message: "Splashdown confirmed" },
+      { offset: 40 * 60, message: "Recovery team secure" }
+    ]
+  }
+];
 
-function initSummaryPanel() {
-    // Create summary panel once if it doesn't exist
-    if (!document.getElementById('summary-panel')) {
-        const panel = document.createElement('div');
-        panel.id = 'summary-panel';
-        panel.innerHTML = `
-            <div class="summary-header">
-                <h2>Mission Summary - Plain Language</h2>
-                <button class="close-summary" onclick="toggleSummaryMode()">×</button>
-            </div>
-            <div class="summary-container" id="summary-content"></div>
-        `;
-        document.body.appendChild(panel);
-    }
+const systemDefinitions = ["Propulsion", "Life Support", "Navigation", "Power"];
+
+const state = {
+  loggedEvents: new Set(),
+  displayed: {
+    velocity: 0,
+    distance: 0,
+    altitude: 0,
+    acceleration: 0,
+    trajectoryError: 0,
+    fuel: 100,
+    power: 100,
+    pressure: 14.7,
+    cabinTemp: 72,
+    radiation: 0.12,
+    signalDelay: 0
+  }
+};
+
+const ui = {
+  missionTime: document.getElementById("mission-time"),
+  status: document.getElementById("system-status"),
+  nasaLinkState: document.getElementById("nasa-link-state"),
+  timeline: document.getElementById("timeline-list"),
+  velocity: document.getElementById("velocity"),
+  distance: document.getElementById("distance"),
+  altitude: document.getElementById("altitude"),
+  comms: document.getElementById("comms"),
+  log: document.getElementById("event-log"),
+  systemsGrid: document.getElementById("systems-grid"),
+  acceleration: document.getElementById("acceleration"),
+  trajectoryError: document.getElementById("trajectory-error"),
+  fuel: document.getElementById("fuel"),
+  power: document.getElementById("power"),
+  pressure: document.getElementById("pressure"),
+  cabinTemp: document.getElementById("cabin-temp"),
+  radiation: document.getElementById("radiation"),
+  signalDelay: document.getElementById("signal-delay"),
+  dsnNode: document.getElementById("dsn-node"),
+  flightMode: document.getElementById("flight-mode"),
+  apodTitle: document.getElementById("apod-title"),
+  apodDate: document.getElementById("apod-date"),
+  solarEvents: document.getElementById("solar-events"),
+  nasaUpdated: document.getElementById("nasa-updated")
+};
+
+function init() {
+  renderTimeline();
+  renderSystems();
+  addEvent("T+00:00:00", "Mission console online");
+  addEvent("T+00:00:00", "NASA feed handshake initiated");
+  tick();
+  setInterval(tick, SECOND);
+  fetchNasaFeeds();
+  setInterval(fetchNasaFeeds, 10 * 60 * SECOND);
 }
 
-function toggleSummaryMode() {
-    summaryMode = !summaryMode;
-    let panel = document.getElementById('summary-panel');
-    
-    // Create panel if it doesn't exist
-    if (!panel) {
-        initSummaryPanel();
-        panel = document.getElementById('summary-panel');
-    }
-    
-    const toggle = document.getElementById('summaryToggle');
-    
-    if (summaryMode) {
-        generateSummaries();
-        panel.classList.add('open');
-        if (toggle) toggle.classList.add('active');
-        document.body.style.overflow = 'hidden';
-    } else {
-        panel.classList.remove('open');
-        if (toggle) toggle.classList.remove('active');
-        document.body.style.overflow = 'auto';
-    }
+function tick() {
+  const elapsedSeconds = Math.max(0, Math.floor((Date.now() - missionStart.getTime()) / SECOND));
+  const currentPhase = findCurrentPhase(elapsedSeconds);
+
+  updateMissionClock(elapsedSeconds);
+  updateTimeline(currentPhase.index);
+  updateTelemetry(elapsedSeconds, currentPhase);
+  updateEngineering(elapsedSeconds, currentPhase);
+  processEvents(elapsedSeconds);
+  updateSystemStatus(currentPhase.name);
 }
 
-
-function generateSummaries() {
-    const summaries = `
-        <div class="summary-section">
-            <h3>🚀 Where Are We?</h3>
-            <p class="summary-text">
-                <strong>Artemis II</strong> is halfway through its historic <strong>10-day mission</strong> around the Moon. 
-                Our four astronauts (Reid Wiseman, Victor Glover, Christina Koch, and Jeremy Hansen) launched on April 1 and are 
-                now in <strong>deep space</strong>—about <strong>373,000 km (232,000 miles) from Earth</strong>. 
-                They're approaching the Moon for a close flyby on April 6, passing within just <strong>80 km (50 miles)</strong> 
-                of the lunar surface. This is humanity's first crewed deep space mission in over 50 years.
-            </p>
-        </div>
-
-        <div class="summary-section">
-            <h3>👨‍🚀 The Crew</h3>
-            <p class="summary-text">
-                <strong>Reid Wiseman (Commander)</strong>—a Navy pilot with ISS experience, leads the mission.
-                <br><strong>Victor Glover (Pilot)</strong>—historic first African American spacecraft pilot.
-                <br><strong>Christina Koch (Mission Specialist)</strong>—holds the record for longest spacewalk by a woman.
-                <br><strong>Jeremy Hansen (Mission Specialist, Canadian)</strong>—first Canadian to fly beyond Earth orbit.
-                <br><br>All four are in excellent health, maintaining the spacecraft, and preparing for the lunar close approach.
-            </p>
-        </div>
-
-        <div class="summary-section">
-            <h3>⏰ What's Next?</h3>
-            <p class="summary-text">
-                <strong>April 6:</strong> Closest approach to the Moon at 80 km altitude—the highlight of the mission.
-                <br><strong>April 8:</strong> Begin the journey home via a <strong>"free-return trajectory"</strong> (a path that naturally loops back to Earth).
-                <br><strong>April 11:</strong> Splash down in the Pacific Ocean near San Diego.
-                <br><br>The entire mission demonstrates critical technologies NASA will use for its <strong>Artemis III moon landing</strong> later this decade.
-            </p>
-        </div>
-
-        <div class="summary-section">
-            <h3>🛰️ How We Stay in Touch</h3>
-            <p class="summary-text">
-                The spacecraft communicates with NASA's <strong>Deep Space Network</strong>—a global system of giant radio antennas. 
-                Right now, the Goldstone station in California is providing communications. All systems are <strong>nominal</strong> 
-                (working perfectly). Power comes from advanced <strong>solar arrays</strong>, and the crew has plenty of air, water, 
-                and food for the mission.
-            </p>
-        </div>
-
-        <div class="summary-section">
-            <h3>📊 Live Status</h3>
-            <p class="summary-text">
-                <strong>Velocity:</strong> The spacecraft is moving at 0.64 km/s (1,430 mph).
-                <br><strong>Temperature:</strong> Inside, a comfortable 22°C (72°F). Outside, a brutal -150°C (-238°F).
-                <br><strong>Fuel:</strong> 85% remaining for mid-course corrections and return maneuvers.
-                <br><strong>Radiation:</strong> Crew is monitoring radiation levels, which are higher in deep space than in Earth orbit but within safe limits.
-                <br><br>For detailed telemetry, <a href="javascript:toggleSummaryMode()">click here to view the technical dashboard</a>.
-            </p>
-        </div>
-
-        <div class="summary-section">
-            <h3>❓ Why This Matters</h3>
-            <p class="summary-text">
-                Artemis II is a test run for getting humans back to the Moon. Everything learned here—from deep space navigation 
-                to life support systems—directly feeds into <strong>Artemis III</strong>, which will land astronauts on the lunar surface 
-                for the first time since 1972. Success on this mission paves the way for permanent human presence on the Moon 
-                and eventual missions to Mars.
-            </p>
-        </div>
-
-        <div class="summary-section">
-            <h3>🔗 Learn More</h3>
-            <p class="summary-text">
-                <a href="https://www.nasa.gov/mission/artemis-ii/" target="_blank">Official NASA Artemis II Page</a> | 
-                <a href="https://eyes.nasa.gov/apps/solar-system/#/sc_artemis_2" target="_blank">Track the Spacecraft with NASA's Eyes</a> | 
-                <a href="https://www.nasa.gov/feature/our-artemis-crew/" target="_blank">Meet the Crew</a> | 
-                <a href="https://deepspace.jpl.nasa.gov/" target="_blank">Deep Space Network Status</a>
-            </p>
-        </div>
-    `;
-    
-    document.getElementById('summary-content').innerHTML = summaries;
+function findCurrentPhase(elapsedSeconds) {
+  for (let i = phases.length - 1; i >= 0; i -= 1) {
+    if (elapsedSeconds >= phases[i].startSeconds) {
+      return { phase: phases[i], index: i };
+    }
+  }
+  return { phase: phases[0], index: 0 };
 }
 
-function startMETTimer() {
-    const launchTime = new Date('2026-04-01T22:35:00Z');
-    
-    function updateMET() {
-        const now = new Date();
-        const elapsed = now - launchTime;
-        
-        const days = Math.floor(elapsed / (1000 * 60 * 60 * 24));
-        const hours = Math.floor((elapsed % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-        const minutes = Math.floor((elapsed % (1000 * 60 * 60)) / (1000 * 60));
-        const seconds = Math.floor((elapsed % (1000 * 60)) / 1000);
-        
-        const metString = `T+${days}d ${hours.toString().padStart(2, '0')}h ${minutes.toString().padStart(2, '0')}m ${seconds.toString().padStart(2, '0')}s`;
-        document.getElementById('met-timer').textContent = metString;
-    }
-    
-    updateMET();
-    setInterval(updateMET, 1000);
+function progressInPhase(elapsedSeconds, phase) {
+  const local = elapsedSeconds - phase.startSeconds;
+  const p = local / phase.durationSeconds;
+  return Math.min(1, Math.max(0, p));
 }
 
-function updateProgress() {
-    const launchTime = new Date('2026-04-01T22:35:00Z');
-    const splashdownTime = new Date('2026-04-11T00:21:00Z');
-    const now = new Date();
-    
-    const totalDuration = splashdownTime - launchTime;
-    const elapsed = now - launchTime;
-    const progress = Math.min((elapsed / totalDuration) * 100, 100);
-    
-    document.getElementById('progress-bar').style.width = progress + '%';
+function lerp(a, b, t) {
+  return a + (b - a) * t;
 }
 
-// Update position data every 10 seconds with simulated changes
-// For accurate data, integrate NASA's SSC Web Services API
-// Example: fetch from https://sscweb.gsfc.nasa.gov/WebServices/REST/SSCWebService
-// with method "getLocations" and spacecraft "orion" (if available)
-function updatePositionData() {
-    let earthDist = 373588;
-    let moonDist = 76691;
-    let velocity = 0.64;
-    
-    async function fetchRealData() {
-        try {
-            // NASA's SSC Web Services - no API key required for basic queries
-            const response = await fetch('https://sscweb.gsfc.nasa.gov/WebServices/REST/SSCWebService', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    "method": "getLocations",
-                    "args": {
-                        "spacecraft": ["orion"], // Artemis II spacecraft
-                        "startTime": new Date().toISOString().slice(0, -5) + 'Z',
-                        "endTime": new Date(Date.now() + 60000).toISOString().slice(0, -5) + 'Z', // 1 minute later
-                        "outputOptions": {
-                            "coordinateSystem": "GSE",
-                            "outputFormat": "json"
-                        }
-                    }
-                })
-            });
-            
-            if (response.ok) {
-                const data = await response.json();
-                console.log('SSC Data:', data);
-                // Parse data and update distances/velocity if available
-                // For now, fall back to simulation
-            }
-        } catch (error) {
-            console.log('SSC API not available or spacecraft not found, using simulated data');
-        }
+function smooth(previous, next, factor = 0.35) {
+  return previous + (next - previous) * factor;
+}
+
+function updateMissionClock(seconds) {
+  const hours = String(Math.floor(seconds / 3600)).padStart(2, "0");
+  const minutes = String(Math.floor((seconds % 3600) / 60)).padStart(2, "0");
+  const secs = String(seconds % 60).padStart(2, "0");
+  ui.missionTime.textContent = `T+${hours}:${minutes}:${secs}`;
+}
+
+function updateTelemetry(elapsedSeconds, currentPhase) {
+  const phase = currentPhase.phase;
+  const p = progressInPhase(elapsedSeconds, phase);
+
+  const targetVelocity = lerp(phase.telemetry.velocity[0], phase.telemetry.velocity[1], p);
+  const targetDistance = lerp(phase.telemetry.distance[0], phase.telemetry.distance[1], p);
+  const targetAltitude = lerp(phase.telemetry.altitude[0], phase.telemetry.altitude[1], p);
+
+  state.displayed.velocity = smooth(state.displayed.velocity, targetVelocity);
+  state.displayed.distance = smooth(state.displayed.distance, targetDistance);
+  state.displayed.altitude = smooth(state.displayed.altitude, targetAltitude);
+
+  ui.velocity.textContent = Math.round(state.displayed.velocity).toLocaleString("en-US");
+  ui.distance.textContent = Math.round(state.displayed.distance).toLocaleString("en-US");
+  ui.altitude.textContent = Math.max(0, Math.round(state.displayed.altitude)).toLocaleString("en-US");
+  ui.comms.textContent = phase.telemetry.comms;
+  ui.flightMode.textContent = phase.telemetry.flightMode;
+}
+
+function updateEngineering(elapsedSeconds, currentPhase) {
+  const phase = currentPhase.phase;
+  const p = progressInPhase(elapsedSeconds, phase);
+
+  const phaseDrift = Math.sin(elapsedSeconds / 23) * 0.08;
+  const targetAcceleration = Math.max(0.02, Math.abs((phase.telemetry.velocity[1] - phase.telemetry.velocity[0]) / 18000) + phaseDrift);
+  const targetTrajectoryError = Math.abs(Math.sin(elapsedSeconds / 40) * 0.35);
+  const targetFuel = Math.max(7, 100 - (elapsedSeconds / (8.8 * 24 * 3600)) * 100);
+  const targetPower = Math.max(42, 99 - p * 6 - currentPhase.index * 0.5 + Math.sin(elapsedSeconds / 180) * 0.2);
+  const targetPressure = 14.7 + Math.sin(elapsedSeconds / 120) * 0.12;
+  const targetCabinTemp = 71.8 + Math.sin(elapsedSeconds / 90) * 1.6;
+  const targetRadiation = 0.08 + currentPhase.index * 0.05 + Math.abs(Math.sin(elapsedSeconds / 54)) * 0.08;
+  const targetSignalDelay = Math.max(0.03, state.displayed.distance / 186282);
+
+  state.displayed.acceleration = smooth(state.displayed.acceleration, targetAcceleration, 0.2);
+  state.displayed.trajectoryError = smooth(state.displayed.trajectoryError, targetTrajectoryError, 0.22);
+  state.displayed.fuel = smooth(state.displayed.fuel, targetFuel, 0.06);
+  state.displayed.power = smooth(state.displayed.power, targetPower, 0.2);
+  state.displayed.pressure = smooth(state.displayed.pressure, targetPressure, 0.2);
+  state.displayed.cabinTemp = smooth(state.displayed.cabinTemp, targetCabinTemp, 0.2);
+  state.displayed.radiation = smooth(state.displayed.radiation, targetRadiation, 0.16);
+  state.displayed.signalDelay = smooth(state.displayed.signalDelay, targetSignalDelay, 0.3);
+
+  ui.acceleration.textContent = `${state.displayed.acceleration.toFixed(2)} g`;
+  ui.trajectoryError.textContent = `${state.displayed.trajectoryError.toFixed(2)}°`;
+  ui.fuel.textContent = `${state.displayed.fuel.toFixed(1)}%`;
+  ui.power.textContent = `${state.displayed.power.toFixed(1)}%`;
+  ui.pressure.textContent = `${state.displayed.pressure.toFixed(2)} psi`;
+  ui.cabinTemp.textContent = `${state.displayed.cabinTemp.toFixed(1)} °F`;
+  ui.radiation.textContent = `${state.displayed.radiation.toFixed(2)} mSv/h`;
+  ui.signalDelay.textContent = `${state.displayed.signalDelay.toFixed(2)} s`;
+
+  ui.dsnNode.textContent = getDsnNode(currentPhase.index);
+}
+
+function getDsnNode(phaseIndex) {
+  if (phaseIndex <= 1) return "GOLDSTONE DSS-24";
+  if (phaseIndex <= 3) return "MADRID DSS-65";
+  if (phaseIndex <= 5) return "CANBERRA DSS-34";
+  return "GOLDSTONE DSS-14";
+}
+
+function renderTimeline() {
+  ui.timeline.innerHTML = phases
+    .map((phase, index) => `<li id="phase-${index}">${phase.name}</li>`)
+    .join("");
+}
+
+function updateTimeline(activeIndex) {
+  phases.forEach((_, index) => {
+    const item = document.getElementById(`phase-${index}`);
+    item.classList.remove("completed", "current");
+
+    if (index < activeIndex) {
+      item.classList.add("completed");
+    } else if (index === activeIndex) {
+      item.classList.add("current");
     }
-    
-    function updateSimulated() {
-        // Simulate slight changes
-        earthDist += Math.random() * 200 - 100;
-        moonDist += Math.random() * 200 - 100;
-        velocity += (Math.random() - 0.5) * 0.02;
-        
-        // Keep reasonable bounds
-        earthDist = Math.max(350000, Math.min(410000, earthDist));
-        moonDist = Math.max(40000, Math.min(120000, moonDist));
-        velocity = Math.max(0.4, Math.min(1.2, velocity));
-        
-        document.getElementById('earth-dist').textContent = Math.round(earthDist).toLocaleString() + ' km';
-        document.getElementById('moon-dist').textContent = Math.round(moonDist).toLocaleString() + ' km';
-        document.getElementById('velocity').textContent = velocity.toFixed(2) + ' km/s';
-        
-        document.getElementById('earth-dist-text').textContent = Math.round(earthDist).toLocaleString() + ' km';
-        document.getElementById('moon-dist-text').textContent = Math.round(moonDist).toLocaleString() + ' km';
-    }
-    
-    // Try to fetch real data first
-    fetchRealData().then(() => {
-        updateSimulated(); // Update immediately
-        setInterval(updateSimulated, 10000); // Then update every 10 seconds
+  });
+}
+
+function processEvents(elapsedSeconds) {
+  phases.forEach((phase) => {
+    phase.events.forEach((event) => {
+      const triggerSecond = phase.startSeconds + event.offset;
+      const key = `${phase.name}-${event.offset}`;
+      if (elapsedSeconds >= triggerSecond && !state.loggedEvents.has(key)) {
+        state.loggedEvents.add(key);
+        addEvent(formatMissionTime(triggerSecond), event.message);
+      }
     });
+  });
 }
 
-function setupTimelineControls() {
-    const playPauseBtn = document.getElementById('play-pause');
-    const speedSelect = document.getElementById('speed-select');
-    
-    // For demo, just toggle play/pause text
-    playPauseBtn.addEventListener('click', function() {
-        if (playPauseBtn.textContent === '▶ Play') {
-            playPauseBtn.textContent = '⏸ Pause';
-        } else {
-            playPauseBtn.textContent = '▶ Play';
-        }
-    });
+function addEvent(stamp, message) {
+  const rows = ui.log.querySelectorAll(".log-entry");
+  rows.forEach((row) => row.classList.remove("latest"));
+
+  const entry = document.createElement("div");
+  entry.className = "log-entry latest";
+  entry.textContent = `[${stamp}] ${message}`;
+  ui.log.appendChild(entry);
+
+  ui.log.scrollTop = ui.log.scrollHeight;
 }
 
-function loadMissionOverview() {
-    const overview = {
-        type: 'Crewed Lunar Flyby',
-        launch: 'April 1, 2026',
-        duration: '10 Days',
-        spacecraft: 'Orion',
-        rocket: 'Space Launch System (SLS)',
-        objectives: 'Demonstrate deep space exploration capabilities, first crewed flight of SLS and Orion, pave way for lunar surface missions.',
-        trajectory: 'Outbound trip of about 4 days to lunar orbit, figure-eight extending over 230,000 miles from Earth, return via free-return trajectory.'
-    };
-
-    const content = `
-        <div class="overview-image">
-            <img src="https://www.nasa.gov/wp-content/uploads/2023/11/artemis2_mission_overview.jpg" 
-                 alt="Artemis II Mission Overview" loading="lazy" onerror="this.style.display='none'">
-        </div>
-        <div class="overview-text">
-            <p><strong>Mission Type:</strong> ${overview.type}</p>
-            <p><strong>Launch Date:</strong> ${overview.launch}</p>
-            <p><strong>Duration:</strong> ${overview.duration}</p>
-            <p><strong>Spacecraft:</strong> ${overview.spacecraft}</p>
-            <p><strong>Rocket:</strong> ${overview.rocket}</p>
-            <p><strong>Objectives:</strong> ${overview.objectives}</p>
-            <p><strong>Trajectory:</strong> ${overview.trajectory}</p>
-        </div>
-    `;
-    document.getElementById('overview-content').innerHTML = content;
+function formatMissionTime(totalSeconds) {
+  const h = String(Math.floor(totalSeconds / 3600)).padStart(2, "0");
+  const m = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, "0");
+  const s = String(totalSeconds % 60).padStart(2, "0");
+  return `T+${h}:${m}:${s}`;
 }
 
-function loadCrew() {
-    const crew = [
-        {
-            name: 'Reid Wiseman',
-            role: 'Commander',
-            agency: 'NASA',
-            bio: 'NASA astronaut, former Navy pilot, flew on ISS Expedition 41/42.',
-            image: 'https://www.nasa.gov/sites/default/files/thumbnails/image/edu_what_is_iss_0.jpg'
-        },
-        {
-            name: 'Victor Glover',
-            role: 'Pilot',
-            agency: 'NASA',
-            bio: 'NASA astronaut, Navy pilot, first African American to pilot a spacecraft during Crew-1 mission.',
-            image: 'https://www.nasa.gov/sites/default/files/thumbnails/image/29395245121_6cb3f51233_o.jpg'
-        },
-        {
-            name: 'Christina Koch',
-            role: 'Mission Specialist',
-            agency: 'NASA',
-            bio: 'NASA astronaut, holds record for longest single spaceflight by a woman (328 days).',
-            image: 'https://www.nasa.gov/sites/default/files/thumbnails/image/chan_koch_1.jpg'
-        },
-        {
-            name: 'Jeremy Hansen',
-            role: 'Mission Specialist',
-            agency: 'CSA (Canadian Space Agency)',
-            bio: 'Canadian astronaut, former fighter pilot, selected in 2017 CSA recruitment.',
-            image: 'https://www.nasa.gov/sites/default/files/thumbnails/image/622.jpg'
-        }
-    ];
-
-    const content = crew.map(member => `
-        <div class="crew-member">
-            <img src="${member.image}" alt="${member.name}" loading="lazy" onerror="this.style.display='none'">
-            <h3>${member.name}</h3>
-            <p><strong>Role:</strong> ${member.role}</p>
-            <p><strong>Agency:</strong> ${member.agency}</p>
-            <p>${member.bio}</p>
-        </div>
-    `).join('');
-    document.getElementById('crew-content').innerHTML = content;
+function renderSystems() {
+  ui.systemsGrid.innerHTML = systemDefinitions
+    .map(
+      (name) => `
+      <div class="system" id="system-${name.toLowerCase().replace(/\s+/g, "-")}">
+        <span class="name">${name}</span>
+        <span class="state">NOMINAL</span>
+      </div>
+    `
+    )
+    .join("");
 }
 
-function loadTimeline() {
-    const timeline = [
-        { date: '2026-04-01T22:35:00Z', label: 'April 1, 2026 22:35 UTC', event: 'Launch from Kennedy Space Center' },
-        { date: '2026-04-02T00:00:00Z', label: 'April 2, 2026 T+1d', event: 'Earth orbit checkout and systems verification' },
-        { date: '2026-04-03T00:00:00Z', label: 'April 3, 2026 T+2d', event: 'Trans-lunar injection burn' },
-        { date: '2026-04-05T00:00:00Z', label: 'April 5, 2026 T+4d', event: 'Outbound coast phase' },
-        { date: '2026-04-06T00:00:00Z', label: 'April 6, 2026 T+5d', event: 'Lunar flyby at ~80 km altitude' },
-        { date: '2026-04-08T00:00:00Z', label: 'April 8, 2026 T+7d', event: 'Return trajectory' },
-        { date: '2026-04-11T00:21:00Z', label: 'April 11, 2026 T+10d', event: 'Splashdown in Pacific Ocean' }
-    ];
+function updateSystemStatus(phaseName) {
+  let level = "nominal";
+  if (phaseName === "Translunar Injection (TLI)" || phaseName === "Reentry") {
+    level = "warning";
+  }
+  if (phaseName === "Reentry" && state.displayed.altitude < 30) {
+    level = "critical";
+  }
 
-    const now = new Date('2026-04-05T12:00:00Z');
-    const content = timeline.map((item, index) => {
-        const eventDate = new Date(item.date);
-        const isFuture = eventDate > now;
-        const isActive = !isFuture && eventDate <= now && (index === timeline.length - 1 || new Date(timeline[index + 1].date) > now);
-        const statusClass = isFuture ? 'future' : isActive ? 'active' : '';
+  ui.status.classList.remove("warning", "critical");
+  ui.status.textContent = level === "nominal" ? "NOMINAL" : level === "warning" ? "WARNING" : "CRITICAL";
 
-        return `
-        <div class="timeline-item ${statusClass}">
-            <span class="timeline-date">${item.label}</span>
-            <span class="timeline-event">${item.event}</span>
-        </div>
-    `;
-    }).join('');
-    document.getElementById('timeline-content').innerHTML = content;
-}
+  if (level !== "nominal") {
+    ui.status.classList.add(level);
+  }
 
-function loadPosition() {
-    const position = {
-        'Current Phase': 'Outbound Transit',
-        'Distance from Earth': '373,588 km',
-        'Distance from Moon': '76,691 km',
-        'Orbital Velocity': '0.64 km/s',
-        'Trajectory': 'Figure-eight orbit extending 230,000 miles from Earth',
-        'Next Milestone': 'Lunar Flyby (April 6, 2026)',
-        'Time to Flyby': '22 hours 35 minutes'
-    };
+  systemDefinitions.forEach((name) => {
+    const card = document.getElementById(`system-${name.toLowerCase().replace(/\s+/g, "-")}`);
+    const stateLabel = card.querySelector(".state");
+    card.classList.remove("warning", "critical");
 
-    const content = Object.entries(position).map(([key, value]) => `
-        <p><strong>${key}:</strong> ${value}</p>
-    `).join('');
-    document.getElementById('position-content').innerHTML = content;
-}
-
-function loadTelemetry() {
-    const telemetry = {
-        'Communications': 'Active (DSN Goldstone)',
-        'Power Generation': '11.6 kW (Solar Arrays)',
-        'Internal Temperature': '22°C (72°F)',
-        'External Temperature': '-150°C (-238°F)',
-        'Radiation Level': '2.3 mSv/day',
-        'Fuel Remaining': '85% (MMH/MON)',
-        'Cabin Pressure': '101.3 kPa (14.7 psi)',
-        'Oxygen Levels': '20.9%',
-        'Crew Health': 'Nominal',
-        'Life Support': 'Active'
-    };
-
-    const content = Object.entries(telemetry).map(([key, value]) => `
-        <p><strong>${key}:</strong> ${value}</p>
-    `).join('');
-    document.getElementById('telemetry-content').innerHTML = content;
-}
-
-async function loadMedia() {
-    try {
-        // NASA's Image and Video Library API
-        const response = await fetch('https://images-api.nasa.gov/search?q=artemis%20II&media_type=image');
-        const data = await response.json();
-        
-        if (data.collection && data.collection.items.length > 0) {
-            const media = data.collection.items.slice(0, 5).map(item => ({
-                title: item.data[0].title,
-                url: item.links ? item.links[0].href : '#',
-                description: item.data[0].description || 'NASA Artemis II mission imagery'
-            }));
-            
-            const content = media.map(item => `
-                <div class="media-item">
-                    <h4><a href="${item.url}" target="_blank">${item.title}</a></h4>
-                    <p>${item.description.substring(0, 100)}...</p>
-                </div>
-            `).join('');
-            document.getElementById('media-content').innerHTML = content;
-        } else {
-            // Fallback to static content
-            loadMediaFallback();
-        }
-    } catch (error) {
-        console.log('NASA Image API not available, using fallback');
-        loadMediaFallback();
+    if (level === "nominal") {
+      stateLabel.textContent = "NOMINAL";
+      return;
     }
-}
 
-function loadMediaFallback() {
-    const media = [
-        { 
-            title: 'Artemis II Launch', 
-            image: 'https://www.nasa.gov/wp-content/uploads/2023/11/artemis2_launch.jpg', 
-            description: 'Launch of Artemis II from Kennedy Space Center',
-            link: 'https://www.nasa.gov/image-detail/artemis-ii-launch/'
-        },
-        { 
-            title: 'Orion Spacecraft', 
-            image: 'https://www.nasa.gov/wp-content/uploads/2023/11/orion_spacecraft.jpg', 
-            description: 'The Orion crew capsule for deep space missions',
-            link: 'https://www.nasa.gov/mission/orion-spacecraft/'
-        },
-        { 
-            title: 'Artemis II Crew', 
-            image: 'https://www.nasa.gov/wp-content/uploads/2023/11/artemis2_crew.jpg', 
-            description: 'The four astronauts preparing for lunar flyby',
-            link: 'https://www.nasa.gov/mission/artemis-ii/'
-        },
-        { 
-            title: 'SLS Rocket', 
-            image: 'https://www.nasa.gov/wp-content/uploads/2023/11/sls_rocket.jpg', 
-            description: 'Space Launch System ready for Artemis II',
-            link: 'https://www.nasa.gov/launchvehicle/space-launch-system/'
-        },
-        { 
-            title: 'Lunar Approach', 
-            image: 'https://www.nasa.gov/wp-content/uploads/2023/11/lunar_approach.jpg', 
-            description: 'Visualization of Orion approaching the Moon',
-            link: 'https://www.nasa.gov/mission/artemis-ii/'
-        }
-    ];
-
-    const content = media.map(item => `
-        <div class="media-item">
-            <img src="${item.image}" alt="${item.title}" loading="lazy" onerror="this.style.display='none'">
-            <h4><a href="${item.link}" target="_blank">${item.title}</a></h4>
-            <p>${item.description}</p>
-        </div>
-    `).join('');
-    document.getElementById('media-content').innerHTML = content;
-}
-
-function loadLiveData() {
-    // Initialize with current data
-    updateLiveDataDisplay();
-}
-
-function updateLiveDataDisplay() {
-    const data = {
-        // Position and trajectory
-        'Distance from Earth': { value: '373,588 km (232,000 miles)', explanation: 'Current distance between Orion spacecraft and Earth center. This increases as the spacecraft travels toward the Moon.' },
-        'Distance from Moon': { value: '76,691 km (47,600 miles)', explanation: 'Current distance between Orion spacecraft and Moon center. This decreases as the spacecraft approaches lunar orbit.' },
-        'Altitude above Earth': { value: '373,588 km', explanation: 'Height above Earth\'s surface. Deep space missions operate far beyond low Earth orbit.' },
-        'Orbital Velocity': { value: '0.64 km/s (1,430 mph)', explanation: 'Current speed relative to Earth. Lower than Earth orbit due to distance and trajectory.' },
-        'Trajectory Phase': { value: 'Outbound Coast', explanation: 'Current mission phase: traveling toward the Moon after trans-lunar injection.' },
-        'Time to Lunar Flyby': { value: '22 hours 35 minutes', explanation: 'Time remaining until Orion passes within 80 km of the Moon\'s surface.' },
-        
-        // Orbital elements
-        'Semi-major Axis': { value: '192,000 km', explanation: 'Half the length of the orbit\'s major axis. Defines the size of the elliptical orbit.' },
-        'Eccentricity': { value: '0.97', explanation: 'How elliptical the orbit is. 0 = perfect circle, 1 = parabola. Deep space trajectories are highly eccentric.' },
-        'Inclination': { value: 'N/A (Deep Space)', explanation: 'Angle of the orbit relative to Earth\'s equator. Not applicable for deep space free-return trajectories.' },
-        'Argument of Perigee': { value: 'N/A', explanation: 'Angle defining closest approach point. Not used in deep space navigation.' },
-        'Right Ascension': { value: 'N/A', explanation: 'Orbital plane orientation. Not tracked for deep space missions.' },
-        
-        // Systems status
-        'Communications': { value: 'Active (DSN Goldstone)', explanation: 'Radio link status with Deep Space Network. Goldstone, CA station is currently providing communications.' },
-        'Power Generation': { value: '11.6 kW (Solar Arrays)', explanation: 'Electricity produced by solar panels. Orion uses advanced solar arrays for power in deep space.' },
-        'Internal Temperature': { value: '22°C (72°F)', explanation: 'Cabin temperature maintained for crew comfort and equipment operation.' },
-        'External Temperature': { value: '-150°C (-238°F)', explanation: 'Spacecraft exterior temperature. Extreme cold due to lack of atmosphere and distance from Sun.' },
-        'Radiation Level': { value: '2.3 mSv/day', explanation: 'Radiation exposure rate. Higher than Earth due to lack of magnetic field protection.' },
-        'Fuel Remaining': { value: '85% (MMH/MON)', explanation: 'Remaining propellant (Monomethylhydrazine and Nitrogen Tetroxide) for Orion\'s main engines.' },
-        
-        // Mission parameters
-        'Mission Elapsed Time': { value: 'T+4d 02:48:16', explanation: 'Time since launch. T+ format shows days, hours, minutes, seconds.' },
-        'Days in Mission': { value: '5 of 10', explanation: 'Current mission day out of total planned duration.' },
-        'Progress': { value: '50%', explanation: 'Mission completion percentage based on timeline.' },
-        'Next Major Event': { value: 'Lunar Flyby (April 6, 2026)', explanation: 'Upcoming critical mission milestone: close approach to the Moon.' },
-        
-        // Crew status
-        'Crew Health': { value: 'Nominal', explanation: 'Overall crew physical condition. All systems functioning normally.' },
-        'Life Support': { value: 'Active', explanation: 'Environmental Control and Life Support System status. Provides air, water, and temperature control.' },
-        'Cabin Pressure': { value: '101.3 kPa (14.7 psi)', explanation: 'Internal pressure maintained at Earth sea-level equivalent for crew safety.' },
-        'Oxygen Levels': { value: '20.9%', explanation: 'Breathable oxygen concentration in cabin air.' },
-        
-        // Ground systems
-        'DSN Stations': { value: '3 active', explanation: 'Number of Deep Space Network antennas currently tracking the spacecraft.' },
-        'Mission Control': { value: 'Houston, TX', explanation: 'Primary control center location. Johnson Space Center handles Artemis missions.' },
-        'Weather at Recovery': { value: 'Clear skies, 22°C', explanation: 'Forecast for splashdown location (Pacific Ocean near San Diego).' }
-    };
-
-    const content = Object.entries(data).map(([key, item]) => `
-        <div class="data-item" onclick="showExplanation('${key}', '${item.explanation}')">
-            <span class="data-label">${key}:</span>
-            <span class="data-value" id="${key.replace(/\s+/g, '-').toLowerCase()}">${item.value}</span>
-            <span class="help-icon">?</span>
-        </div>
-    `).join('');
-    
-    document.getElementById('live-data-content').innerHTML = content;
-}
-
-function startLiveDataUpdates() {
-    // Update live data every 5 seconds
-    setInterval(() => {
-        // Simulate small changes in key metrics
-        const earthDist = parseInt(document.getElementById('distance-from-earth').textContent.split(' ')[0].replace(',', ''));
-        const moonDist = parseInt(document.getElementById('distance-from-moon').textContent.split(' ')[0].replace(',', ''));
-        const velocity = parseFloat(document.getElementById('orbital-velocity').textContent.split(' ')[0]);
-        
-        // Update distances (moving away from Earth, toward Moon)
-        const newEarthDist = earthDist + Math.floor(Math.random() * 100) - 20;
-        const newMoonDist = moonDist - Math.floor(Math.random() * 100) + 20;
-        const newVelocity = velocity + (Math.random() - 0.5) * 0.01;
-        
-        document.getElementById('distance-from-earth').textContent = `${newEarthDist.toLocaleString()} km (${Math.round(newEarthDist * 0.621371)} miles)`;
-        document.getElementById('distance-from-moon').textContent = `${newMoonDist.toLocaleString()} km (${Math.round(newMoonDist * 0.621371)} miles)`;
-        document.getElementById('altitude-above-earth').textContent = `${newEarthDist.toLocaleString()} km`;
-        document.getElementById('orbital-velocity').textContent = `${newVelocity.toFixed(2)} km/s (${Math.round(newVelocity * 2236.94)} mph)`;
-        
-        // Update temperatures slightly
-        const intTemp = parseInt(document.getElementById('internal-temperature').textContent.split('°')[0]);
-        const extTemp = parseInt(document.getElementById('external-temperature').textContent.split('°')[0]);
-        const newIntTemp = intTemp + Math.floor(Math.random() * 3) - 1;
-        const newExtTemp = extTemp + Math.floor(Math.random() * 5) - 2;
-        
-        document.getElementById('internal-temperature').textContent = `${newIntTemp}°C (${Math.round(newIntTemp * 9/5 + 32)}°F)`;
-        document.getElementById('external-temperature').textContent = `${newExtTemp}°C (${Math.round(newExtTemp * 9/5 + 32)}°F)`;
-        
-        // Update radiation
-        const radiation = parseFloat(document.getElementById('radiation-level').textContent.split(' ')[0]);
-        const newRadiation = radiation + (Math.random() - 0.5) * 0.1;
-        document.getElementById('radiation-level').textContent = `${newRadiation.toFixed(1)} mSv/day`;
-        
-    }, 5000);
-}
-
-function showExplanation(title, explanation) {
-    // Create or update explanation modal
-    let modal = document.getElementById('explanation-modal');
-    if (!modal) {
-        modal = document.createElement('div');
-        modal.id = 'explanation-modal';
-        modal.innerHTML = `
-            <div class="modal-content">
-                <span class="close-modal">&times;</span>
-                <h3 id="modal-title"></h3>
-                <p id="modal-explanation"></p>
-            </div>
-        `;
-        document.body.appendChild(modal);
-        
-        modal.querySelector('.close-modal').onclick = () => modal.style.display = 'none';
-        modal.onclick = (e) => { if (e.target === modal) modal.style.display = 'none'; };
+    if (level === "warning" && (name === "Propulsion" || name === "Navigation")) {
+      card.classList.add("warning");
+      stateLabel.textContent = "MONITOR";
+      return;
     }
-    
-    document.getElementById('modal-title').textContent = title;
-    document.getElementById('modal-explanation').textContent = explanation;
-    modal.style.display = 'flex';
+
+    if (level === "critical" && name === "Propulsion") {
+      card.classList.add("critical");
+      stateLabel.textContent = "ALERT";
+      return;
+    }
+
+    stateLabel.textContent = "NOMINAL";
+  });
 }
 
-function toggleNASAEyes() {
-    let eyesContainer = document.getElementById('nasa-eyes-container');
-    if (!eyesContainer) {
-        eyesContainer = document.createElement('div');
-        eyesContainer.id = 'nasa-eyes-container';
-        eyesContainer.innerHTML = `
-            <div class="eyes-header">
-                <h3>NASA's Eyes - Artemis II Trajectory</h3>
-                <button class="close-eyes" onclick="toggleNASAEyes()">×</button>
-            </div>
-            <p class="eyes-note">If the embedded view does not display, open NASA Eyes in a new tab.</p>
-            <a class="eyes-link" href="https://eyes.nasa.gov/apps/solar-system/#/sc_artemis_2" target="_blank" rel="noreferrer">Open NASA Eyes</a>
-            <iframe src="https://eyes.nasa.gov/apps/solar-system/#/sc_artemis_2" 
-                    width="100%" height="600" frameborder="0" allowfullscreen></iframe>
-        `;
-        document.body.appendChild(eyesContainer);
-        eyesContainer.onclick = (e) => { if (e.target === eyesContainer) toggleNASAEyes(); };
+async function fetchNasaFeeds() {
+  const nowStamp = new Date().toISOString().replace("T", " ").slice(0, 19) + " UTC";
+
+  try {
+    const apodResponse = await fetch(`https://api.nasa.gov/planetary/apod?api_key=${NASA_API_KEY}`);
+    if (!apodResponse.ok) {
+      throw new Error("APOD feed unavailable");
     }
-    
-    if (eyesContainer.style.display === 'none' || !eyesContainer.style.display) {
-        eyesContainer.style.display = 'block';
+
+    const apodData = await apodResponse.json();
+    ui.apodTitle.textContent = apodData.title || "No title available";
+    ui.apodDate.textContent = apodData.date || "Unknown";
+
+    const endDate = new Date();
+    const startDate = new Date(Date.now() - 7 * 24 * 3600 * SECOND);
+    const donkiUrl = `https://api.nasa.gov/DONKI/notifications?type=all&startDate=${formatDate(startDate)}&endDate=${formatDate(endDate)}&api_key=${NASA_API_KEY}`;
+
+    const donkiResponse = await fetch(donkiUrl);
+    if (donkiResponse.ok) {
+      const donkiData = await donkiResponse.json();
+      ui.solarEvents.textContent = Array.isArray(donkiData) ? `${donkiData.length} notifications` : "0 notifications";
     } else {
-        eyesContainer.style.display = 'none';
+      ui.solarEvents.textContent = "DONKI unavailable";
     }
+
+    ui.nasaUpdated.textContent = nowStamp;
+    ui.nasaLinkState.textContent = "SYNC ACTIVE";
+    ui.nasaLinkState.classList.remove("warning", "critical");
+    addEvent(formatMissionTime(Math.floor((Date.now() - missionStart.getTime()) / SECOND)), "NASA data feeds synchronized");
+  } catch (error) {
+    ui.apodTitle.textContent = "NASA feed timeout";
+    ui.apodDate.textContent = "--";
+    ui.solarEvents.textContent = "Retry in 10 min";
+    ui.nasaUpdated.textContent = nowStamp;
+    ui.nasaLinkState.textContent = "SYNC DEGRADED";
+    ui.nasaLinkState.classList.remove("critical");
+    ui.nasaLinkState.classList.add("warning");
+    addEvent(formatMissionTime(Math.floor((Date.now() - missionStart.getTime()) / SECOND)), "NASA feed degraded - local simulation continues");
+  }
 }
 
-function loadLiveStream() {
-    const content = `
-        <iframe width="100%" height="400" 
-                src="https://www.youtube.com/embed/live_stream?channel=UCXvO2JJimQ0aUYK1C0rOwg&autoplay=0" 
-                frameborder="0" allowfullscreen loading="lazy"></iframe>
-        <p>Official NASA live coverage. <a href="https://www.youtube.com/@NASA/live" target="_blank">Watch on YouTube</a></p>
-        <div class="stream-info">
-            <p><strong>Stream Status:</strong> <span id="stream-status">Checking...</span></p>
-            <p><strong>Current Program:</strong> Artemis II Mission Coverage</p>
-        </div>
-    `;
-    document.getElementById('livestream-content').innerHTML = content;
-    
-    // Check stream status (simplified)
-    setTimeout(() => {
-        document.getElementById('stream-status').textContent = 'Live';
-        document.getElementById('stream-status').style.color = '#4a9eff';
-    }, 2000);
+function formatDate(date) {
+  return date.toISOString().slice(0, 10);
 }
 
-function loadResources() {
-    const resources = [
-        { title: 'NASA Artemis II Mission Page', url: 'https://www.nasa.gov/mission/artemis-ii/', description: 'Official mission overview' },
-        { title: 'Artemis II Press Kit', url: 'https://www.nasa.gov/artemis-ii-press-kit/', description: 'Detailed mission information' },
-        { title: 'Crew Bios', url: 'https://www.nasa.gov/feature/our-artemis-crew/', description: 'Astronaut profiles' },
-        { title: 'NASA Eyes - Artemis II', url: 'https://eyes.nasa.gov/apps/solar-system/#/sc_artemis_2', description: '3D trajectory visualization' },
-        { title: 'Mission Timeline', url: 'https://www.nasa.gov/missions/artemis/artemis-program-overview/', description: 'Program overview' },
-        { title: 'Orion Spacecraft', url: 'https://www.nasa.gov/humans-in-space/orion-spacecraft/', description: 'Vehicle details' },
-        { title: 'SLS Rocket', url: 'https://www.nasa.gov/launchvehicle/space-launch-system/', description: 'Launch vehicle info' },
-        { title: 'Deep Space Network', url: 'https://deepspace.jpl.nasa.gov/', description: 'Communications network' }
-    ];
-
-    const content = resources.map(resource => `
-        <div class="resource-item">
-            <h4><a href="${resource.url}" target="_blank">${resource.title}</a></h4>
-            <p>${resource.description}</p>
-        </div>
-    `).join('');
-    document.getElementById('resources-content').innerHTML = content;
-}
-
-function toggleNav() {
-    const nav = document.getElementById('page-nav');
-    if (!nav) return;
-    nav.classList.toggle('open');
-}
-
-function closeNav() {
-    const nav = document.getElementById('page-nav');
-    if (!nav) return;
-    nav.classList.remove('open');
-}
+init();
