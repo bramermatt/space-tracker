@@ -19,6 +19,161 @@ const state = { loggedEvents: new Set(), displayed: { velocity: 0, distance: 0, 
 
 const ui = {
   missionTime: document.getElementById("mission-time"), status: document.getElementById("system-status"), nasaLinkState: document.getElementById("nasa-link-state"), timeline: document.getElementById("timeline-list"), velocity: document.getElementById("velocity"), distance: document.getElementById("distance"), altitude: document.getElementById("altitude"), comms: document.getElementById("comms"), log: document.getElementById("event-log"), systemsGrid: document.getElementById("systems-grid"), acceleration: document.getElementById("acceleration"), trajectoryError: document.getElementById("trajectory-error"), fuel: document.getElementById("fuel"), power: document.getElementById("power"), pressure: document.getElementById("pressure"), cabinTemp: document.getElementById("cabin-temp"), radiation: document.getElementById("radiation"), signalDelay: document.getElementById("signal-delay"), dsnNode: document.getElementById("dsn-node"), flightMode: document.getElementById("flight-mode"), co2Level: document.getElementById("co2-level"), batteryBus: document.getElementById("battery-bus"), cdrVitals: document.getElementById("cdr-vitals"), pilotVitals: document.getElementById("pilot-vitals"), ms1Vitals: document.getElementById("ms1-vitals"), ms2Vitals: document.getElementById("ms2-vitals"), apodTitle: document.getElementById("apod-title"), apodDate: document.getElementById("apod-date"), solarEvents: document.getElementById("solar-events"), neoEvents: document.getElementById("neo-events"), nasaUpdated: document.getElementById("nasa-updated"), nasaMode: document.getElementById("nasa-mode"), summaryToggle: document.getElementById("summary-toggle"), summaryPanel: document.getElementById("summary-panel"), summaryClose: document.getElementById("summary-close"), summaryContent: document.getElementById("summary-content")
+
+const missionStart = new Date("2026-04-01T22:35:00Z");
+
+const phases = [
+  {
+    name: "Launch",
+    startSeconds: 0,
+    durationSeconds: 8 * 60,
+    telemetry: {
+      velocity: [0, 17000],
+      distance: [0, 120],
+      altitude: [0, 115],
+      comms: "ASCENT VOICE + TELEMETRY"
+    },
+    events: [
+      { offset: 10, message: "Main engine ignition confirmed" },
+      { offset: 120, message: "Max-Q passed" },
+      { offset: 470, message: "Orion separation nominal" }
+    ]
+  },
+  {
+    name: "Earth Orbit",
+    startSeconds: 8 * 60,
+    durationSeconds: 2 * 60 * 60,
+    telemetry: {
+      velocity: [17000, 17600],
+      distance: [120, 3800],
+      altitude: [115, 140],
+      comms: "NEAR-EARTH RELAY"
+    },
+    events: [
+      { offset: 60, message: "Orbit insertion confirmed" },
+      { offset: 3300, message: "Systems checkout complete" }
+    ]
+  },
+  {
+    name: "Translunar Injection (TLI)",
+    startSeconds: 2 * 60 * 60 + 8 * 60,
+    durationSeconds: 22 * 60,
+    telemetry: {
+      velocity: [17600, 24700],
+      distance: [3800, 21000],
+      altitude: [140, 620],
+      comms: "DSN TRANSFER"
+    },
+    events: [
+      { offset: 90, message: "TLI burn initiated" },
+      { offset: 1080, message: "TLI burn complete" },
+      { offset: 1200, message: "Trajectory nominal" }
+    ]
+  },
+  {
+    name: "Coast",
+    startSeconds: 2 * 60 * 60 + 30 * 60,
+    durationSeconds: 3 * 24 * 60 * 60,
+    telemetry: {
+      velocity: [24700, 3400],
+      distance: [21000, 215000],
+      altitude: [620, 190000],
+      comms: "DEEP SPACE NETWORK"
+    },
+    events: [
+      { offset: 5 * 60 * 60, message: "Mid-course correction #1 complete" },
+      { offset: 42 * 60 * 60, message: "Crew sleep cycle nominal" }
+    ]
+  },
+  {
+    name: "Lunar Flyby",
+    startSeconds: 3 * 24 * 60 * 60 + 2 * 60 * 60 + 30 * 60,
+    durationSeconds: 9 * 60 * 60,
+    telemetry: {
+      velocity: [3400, 5800],
+      distance: [215000, 239000],
+      altitude: [190000, 62],
+      comms: "LUNAR FAR-SIDE ROUTING"
+    },
+    events: [
+      { offset: 2 * 60 * 60, message: "Closest approach to Moon" },
+      { offset: 4 * 60 * 60, message: "Lunar imaging sequence complete" }
+    ]
+  },
+  {
+    name: "Return Trajectory",
+    startSeconds: 3 * 24 * 60 * 60 + 11 * 60 * 60 + 2 * 60 * 60 + 30 * 60,
+    durationSeconds: 4 * 24 * 60 * 60,
+    telemetry: {
+      velocity: [5800, 24800],
+      distance: [239000, 3200],
+      altitude: [190000, 85],
+      comms: "DSN RETURN LINK"
+    },
+    events: [
+      { offset: 4 * 60 * 60, message: "Return trajectory trim burn nominal" },
+      { offset: 54 * 60 * 60, message: "Entry interface targeting update" }
+    ]
+  },
+  {
+    name: "Reentry",
+    startSeconds: 7 * 24 * 60 * 60 + 11 * 60 * 60 + 2 * 60 * 60 + 30 * 60,
+    durationSeconds: 26 * 60,
+    telemetry: {
+      velocity: [24800, 1300],
+      distance: [3200, 50],
+      altitude: [85, 8],
+      comms: "BLACKOUT / REACQ"
+    },
+    events: [
+      { offset: 120, message: "Reentry communications blackout" },
+      { offset: 1100, message: "Comms reacquired" }
+    ]
+  },
+  {
+    name: "Splashdown",
+    startSeconds: 7 * 24 * 60 * 60 + 11 * 60 * 60 + 28 * 60 + 2 * 60 * 60 + 30 * 60,
+    durationSeconds: 24 * 60 * 60,
+    telemetry: {
+      velocity: [1300, 0],
+      distance: [50, 0],
+      altitude: [8, 0],
+      comms: "RECOVERY NET"
+    },
+    events: [
+      { offset: 5 * 60, message: "Main parachutes deployed" },
+      { offset: 16 * 60, message: "Splashdown confirmed" },
+      { offset: 40 * 60, message: "Recovery team secure" }
+    ]
+  }
+];
+
+const systemDefinitions = [
+  "Propulsion",
+  "Life Support",
+  "Navigation",
+  "Power"
+];
+
+const state = {
+  loggedEvents: new Set(),
+  displayed: {
+    velocity: 0,
+    distance: 0,
+    altitude: 0
+  }
+};
+
+const ui = {
+  missionTime: document.getElementById("mission-time"),
+  status: document.getElementById("system-status"),
+  timeline: document.getElementById("timeline-list"),
+  velocity: document.getElementById("velocity"),
+  distance: document.getElementById("distance"),
+  altitude: document.getElementById("altitude"),
+  comms: document.getElementById("comms"),
+  log: document.getElementById("event-log"),
+  systemsGrid: document.getElementById("systems-grid")
 };
 
 function init() {
@@ -36,6 +191,9 @@ function init() {
 function bindSummaryPanel() {
   ui.summaryToggle.addEventListener("click", () => ui.summaryPanel.classList.add("open"));
   ui.summaryClose.addEventListener("click", () => ui.summaryPanel.classList.remove("open"));
+  addEvent("T+00:00:00", "Mission console online");
+  tick();
+  setInterval(tick, SECOND);
 }
 
 function tick() {
@@ -60,6 +218,36 @@ function progressInPhase(elapsedSeconds, phase) { return Math.min(1, Math.max(0,
 function lerp(a, b, t) { return a + (b - a) * t; }
 function smooth(previous, next, factor = 0.35) { return previous + (next - previous) * factor; }
 
+  updateMissionClock(elapsedSeconds);
+  updateTimeline(currentPhase.index);
+  updateTelemetry(elapsedSeconds, currentPhase);
+  processEvents(elapsedSeconds);
+  updateSystemStatus(currentPhase.name);
+}
+
+function findCurrentPhase(elapsedSeconds) {
+  for (let i = phases.length - 1; i >= 0; i -= 1) {
+    if (elapsedSeconds >= phases[i].startSeconds) {
+      return { phase: phases[i], index: i };
+    }
+  }
+  return { phase: phases[0], index: 0 };
+}
+
+function progressInPhase(elapsedSeconds, phase) {
+  const local = elapsedSeconds - phase.startSeconds;
+  const p = local / phase.durationSeconds;
+  return Math.min(1, Math.max(0, p));
+}
+
+function lerp(a, b, t) {
+  return a + (b - a) * t;
+}
+
+function smooth(previous, next, factor = 0.35) {
+  return previous + (next - previous) * factor;
+}
+
 function updateMissionClock(seconds) {
   const hours = String(Math.floor(seconds / 3600)).padStart(2, "0");
   const minutes = String(Math.floor((seconds % 3600) / 60)).padStart(2, "0");
@@ -73,6 +261,15 @@ function updateTelemetry(elapsedSeconds, currentPhase) {
   state.displayed.velocity = smooth(state.displayed.velocity, lerp(phase.telemetry.velocity[0], phase.telemetry.velocity[1], p));
   state.displayed.distance = smooth(state.displayed.distance, lerp(phase.telemetry.distance[0], phase.telemetry.distance[1], p));
   state.displayed.altitude = smooth(state.displayed.altitude, lerp(phase.telemetry.altitude[0], phase.telemetry.altitude[1], p));
+
+  const targetVelocity = lerp(phase.telemetry.velocity[0], phase.telemetry.velocity[1], p);
+  const targetDistance = lerp(phase.telemetry.distance[0], phase.telemetry.distance[1], p);
+  const targetAltitude = lerp(phase.telemetry.altitude[0], phase.telemetry.altitude[1], p);
+
+  state.displayed.velocity = smooth(state.displayed.velocity, targetVelocity);
+  state.displayed.distance = smooth(state.displayed.distance, targetDistance);
+  state.displayed.altitude = smooth(state.displayed.altitude, targetAltitude);
+
   ui.velocity.textContent = Math.round(state.displayed.velocity).toLocaleString("en-US");
   ui.distance.textContent = Math.round(state.displayed.distance).toLocaleString("en-US");
   ui.altitude.textContent = Math.max(0, Math.round(state.displayed.altitude)).toLocaleString("en-US");
@@ -208,5 +405,113 @@ async function fetchNasaFeeds() {
 }
 
 function formatDate(date) { return date.toISOString().slice(0, 10); }
+
+}
+
+function renderTimeline() {
+  ui.timeline.innerHTML = phases
+    .map((phase, index) => `<li id="phase-${index}">${phase.name}</li>`)
+    .join("");
+}
+
+function updateTimeline(activeIndex) {
+  phases.forEach((_, index) => {
+    const item = document.getElementById(`phase-${index}`);
+    item.classList.remove("completed", "current");
+
+    if (index < activeIndex) {
+      item.classList.add("completed");
+    } else if (index === activeIndex) {
+      item.classList.add("current");
+    }
+  });
+}
+
+function processEvents(elapsedSeconds) {
+  phases.forEach((phase) => {
+    phase.events.forEach((event) => {
+      const triggerSecond = phase.startSeconds + event.offset;
+      const key = `${phase.name}-${event.offset}`;
+      if (elapsedSeconds >= triggerSecond && !state.loggedEvents.has(key)) {
+        state.loggedEvents.add(key);
+        addEvent(formatMissionTime(triggerSecond), event.message);
+      }
+    });
+  });
+}
+
+function addEvent(stamp, message) {
+  const rows = ui.log.querySelectorAll(".log-entry");
+  rows.forEach((row) => row.classList.remove("latest"));
+
+  const entry = document.createElement("div");
+  entry.className = "log-entry latest";
+  entry.textContent = `[${stamp}] ${message}`;
+  ui.log.appendChild(entry);
+
+  ui.log.scrollTop = ui.log.scrollHeight;
+}
+
+function formatMissionTime(totalSeconds) {
+  const h = String(Math.floor(totalSeconds / 3600)).padStart(2, "0");
+  const m = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, "0");
+  const s = String(totalSeconds % 60).padStart(2, "0");
+  return `T+${h}:${m}:${s}`;
+}
+
+function renderSystems() {
+  ui.systemsGrid.innerHTML = systemDefinitions
+    .map(
+      (name) => `
+      <div class="system" id="system-${name.toLowerCase().replace(/\s+/g, "-")}">
+        <span class="name">${name}</span>
+        <span class="state">NOMINAL</span>
+      </div>
+    `
+    )
+    .join("");
+}
+
+function updateSystemStatus(phaseName) {
+  let level = "nominal";
+  if (phaseName === "Translunar Injection (TLI)" || phaseName === "Reentry") {
+    level = "warning";
+  }
+  if (phaseName === "Reentry" && state.displayed.altitude < 30) {
+    level = "critical";
+  }
+
+  ui.status.classList.remove("warning", "critical");
+  ui.status.textContent = level === "nominal" ? "NOMINAL" : level === "warning" ? "WARNING" : "CRITICAL";
+
+  if (level !== "nominal") {
+    ui.status.classList.add(level);
+  }
+
+  systemDefinitions.forEach((name) => {
+    const card = document.getElementById(`system-${name.toLowerCase().replace(/\s+/g, "-")}`);
+    const stateLabel = card.querySelector(".state");
+    card.classList.remove("warning", "critical");
+
+    if (level === "nominal") {
+      stateLabel.textContent = "NOMINAL";
+      return;
+    }
+
+    if (level === "warning" && (name === "Propulsion" || name === "Navigation")) {
+      card.classList.add("warning");
+      stateLabel.textContent = "MONITOR";
+      return;
+    }
+
+    if (level === "critical" && name === "Propulsion") {
+      card.classList.add("critical");
+      stateLabel.textContent = "ALERT";
+      return;
+    }
+
+    stateLabel.textContent = "NOMINAL";
+  });
+}
 
 init();
