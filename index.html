@@ -29,6 +29,55 @@
         <span class="value status" id="system-status">NOMINAL</span>
       </div>
 
+      <div class="top-block">
+        <span class="label">NASA DATA LINK</span>
+        <span class="value" id="nasa-link-state">SYNC PENDING</span>
+      </div>
+
+      <div class="cursor-wrap" aria-hidden="true">
+        <span>CONSOLE LINK</span>
+        <span class="cursor"></span>
+      </div>
+    </header>
+
+    <aside class="left-panel panel">
+      <h2>MISSION TIMELINE</h2>
+      <ol id="timeline-list" class="timeline"></ol>
+    </aside>
+
+    <main class="center-panel panel">
+      <h2>LIVE TELEMETRY // PRIMARY CONSOLE</h2>
+
+      <div class="telemetry-grid">
+        <div class="metric">
+          <span class="metric-label">VELOCITY</span>
+          <span class="metric-value" id="velocity">0</span>
+          <span class="metric-unit">mph</span>
+        </div>
+
+        <div class="metric">
+          <span class="metric-label">DISTANCE FROM EARTH</span>
+          <span class="metric-value" id="distance">0</span>
+          <span class="metric-unit">mi</span>
+        </div>
+
+  <div class="console" role="application" aria-label="Artemis II mission control dashboard">
+    <header class="top-bar panel">
+      <div class="top-block">
+        <span class="label">MISSION</span>
+        <span class="value mission-name">ARTEMIS II</span>
+      </div>
+
+      <div class="top-block">
+        <span class="label">MISSION ELAPSED TIME</span>
+        <span class="value" id="mission-time">T+00:00:00</span>
+      </div>
+
+      <div class="top-block">
+        <span class="label">SYSTEM STATUS</span>
+        <span class="value status" id="system-status">NOMINAL</span>
+      </div>
+
       <div class="cursor-wrap" aria-hidden="true">
         <span>CONSOLE LINK</span>
         <span class="cursor"></span>
@@ -54,7 +103,6 @@
           <span class="metric-value" id="distance">0</span>
           <span class="metric-unit">mi</span>
         </div>
-
         <div class="metric">
           <span class="metric-label">ALTITUDE</span>
           <span class="metric-value" id="altitude">0</span>
