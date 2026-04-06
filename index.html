@@ -12,27 +12,33 @@
 <body>
   <div class="crt-overlay" aria-hidden="true"></div>
 
-  <div class="console" role="application" aria-label="Artemis II Mission Control Dashboard">
+  <div class="console" role="application" aria-label="Artemis II mission control dashboard">
     <header class="top-bar panel">
       <div class="top-block">
         <span class="label">MISSION</span>
         <span class="value mission-name">ARTEMIS II</span>
       </div>
+
       <div class="top-block">
         <span class="label">MISSION ELAPSED TIME</span>
         <span class="value" id="mission-time">T+00:00:00</span>
       </div>
+
       <div class="top-block">
         <span class="label">SYSTEM STATUS</span>
         <span class="value status" id="system-status">NOMINAL</span>
       </div>
+
       <div class="top-block">
-        <span class="label">NASA FEED LINK</span>
+        <span class="label">NASA DATA LINK</span>
         <span class="value" id="nasa-link-state">SYNC PENDING</span>
       </div>
+
       <button id="summary-toggle" class="summary-toggle" type="button">PLAIN TEXT SUMMARY</button>
+
       <div class="cursor-wrap" aria-hidden="true">
-        <span>CONSOLE LINK</span><span class="cursor"></span>
+        <span>CONSOLE LINK</span>
+        <span class="cursor"></span>
       </div>
     </header>
 
@@ -43,11 +49,12 @@
 
     <main class="center-panel panel">
       <h2>LIVE TELEMETRY // PRIMARY CONSOLE</h2>
+
       <div class="telemetry-grid">
         <div class="metric"><span class="metric-label">VELOCITY</span><span class="metric-value" id="velocity">0</span><span class="metric-unit">mph</span></div>
         <div class="metric"><span class="metric-label">DISTANCE FROM EARTH</span><span class="metric-value" id="distance">0</span><span class="metric-unit">mi</span></div>
         <div class="metric"><span class="metric-label">ALTITUDE</span><span class="metric-value" id="altitude">0</span><span class="metric-unit">mi</span></div>
-        <div class="metric"><span class="metric-label">COMMUNICATION STATUS</span><span class="metric-value metric-text" id="comms">LOCKED</span><span class="metric-unit">deep space network</span></div>
+        <div class="metric" id="comms-card"><span class="metric-label">COMMUNICATION STATUS</span><span class="metric-value metric-text" id="comms">LOCKED</span><span class="metric-unit">deep space network</span></div>
       </div>
 
       <section class="subpanel">
@@ -63,6 +70,8 @@
           <div class="dense-item"><span>SIGNAL DELAY</span><strong id="signal-delay">0.00 s</strong></div>
           <div class="dense-item"><span>DSN ANTENNA</span><strong id="dsn-node">GOLDSTONE DSS-24</strong></div>
           <div class="dense-item"><span>FLIGHT MODE</span><strong id="flight-mode">ASCENT GUIDANCE</strong></div>
+          <div class="dense-item"><span>CO2 PARTIAL PRESSURE</span><strong id="co2-level">2.8 mmHg</strong></div>
+          <div class="dense-item"><span>BATTERY BUS</span><strong id="battery-bus">28.0 V</strong></div>
         </div>
       </section>
 
@@ -87,11 +96,77 @@
           <div class="dense-item"><span>NETWORK MODE</span><strong id="nasa-mode">DEGRADED</strong></div>
         </div>
       </section>
+        <div class="metric">
+          <span class="metric-label">VELOCITY</span>
+          <span class="metric-value" id="velocity">0</span>
+          <span class="metric-unit">mph</span>
+        </div>
+
+        <div class="metric">
+          <span class="metric-label">DISTANCE FROM EARTH</span>
+          <span class="metric-value" id="distance">0</span>
+          <span class="metric-unit">mi</span>
+        </div>
+
+  <div class="console" role="application" aria-label="Artemis II mission control dashboard">
+    <header class="top-bar panel">
+      <div class="top-block">
+        <span class="label">MISSION</span>
+        <span class="value mission-name">ARTEMIS II</span>
+      </div>
+
+      <div class="top-block">
+        <span class="label">MISSION ELAPSED TIME</span>
+        <span class="value" id="mission-time">T+00:00:00</span>
+      </div>
+
+      <div class="top-block">
+        <span class="label">SYSTEM STATUS</span>
+        <span class="value status" id="system-status">NOMINAL</span>
+      </div>
+
+      <div class="cursor-wrap" aria-hidden="true">
+        <span>CONSOLE LINK</span>
+        <span class="cursor"></span>
+      </div>
+    </header>
+
+    <aside class="left-panel panel">
+      <h2>MISSION TIMELINE</h2>
+      <ol id="timeline-list" class="timeline"></ol>
+    </aside>
+
+    <main class="center-panel panel">
+      <h2>LIVE TELEMETRY</h2>
+      <div class="telemetry-grid">
+        <div class="metric">
+          <span class="metric-label">VELOCITY</span>
+          <span class="metric-value" id="velocity">0</span>
+          <span class="metric-unit">mph</span>
+        </div>
+
+        <div class="metric">
+          <span class="metric-label">DISTANCE FROM EARTH</span>
+          <span class="metric-value" id="distance">0</span>
+          <span class="metric-unit">mi</span>
+        </div>
+        <div class="metric">
+          <span class="metric-label">ALTITUDE</span>
+          <span class="metric-value" id="altitude">0</span>
+          <span class="metric-unit">mi</span>
+        </div>
+
+        <div class="metric">
+          <span class="metric-label">COMMUNICATION</span>
+          <span class="metric-value" id="comms">LOCKED</span>
+          <span class="metric-unit">deep space network</span>
+        </div>
+      </div>
     </main>
 
     <aside class="right-panel panel">
       <h2>EVENT LOG</h2>
-      <div class="event-log" id="event-log"></div>
+      <div class="event-log" id="event-log" aria-live="polite"></div>
     </aside>
 
     <section class="bottom-panel panel">
@@ -105,7 +180,7 @@
       <h2>PLAIN TEXT SUMMARY // ARTEMIS II</h2>
       <button id="summary-close" class="summary-close" type="button">CLOSE</button>
     </div>
-    <div class="summary-content" id="summary-content"></div>
+    <div id="summary-content" class="summary-content"></div>
   </aside>
 
   <script src="script.js"></script>
