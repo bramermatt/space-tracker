@@ -13,7 +13,130 @@ document.addEventListener('DOMContentLoaded', function() {
     updateProgress();
     updatePositionData();
     startLiveDataUpdates();
+    initSummaryPanel();
 });
+
+let summaryMode = false;
+
+function initSummaryPanel() {
+    // Create summary panel once if it doesn't exist
+    if (!document.getElementById('summary-panel')) {
+        const panel = document.createElement('div');
+        panel.id = 'summary-panel';
+        panel.innerHTML = `
+            <div class="summary-header">
+                <h2>Mission Summary - Plain Language</h2>
+                <button class="close-summary" onclick="toggleSummaryMode()">×</button>
+            </div>
+            <div class="summary-container" id="summary-content"></div>
+        `;
+        document.body.appendChild(panel);
+    }
+}
+
+function toggleSummaryMode() {
+    summaryMode = !summaryMode;
+    let panel = document.getElementById('summary-panel');
+    
+    // Create panel if it doesn't exist
+    if (!panel) {
+        initSummaryPanel();
+        panel = document.getElementById('summary-panel');
+    }
+    
+    const toggle = document.getElementById('summaryToggle');
+    
+    if (summaryMode) {
+        generateSummaries();
+        panel.classList.add('open');
+        if (toggle) toggle.classList.add('active');
+        document.body.style.overflow = 'hidden';
+    } else {
+        panel.classList.remove('open');
+        if (toggle) toggle.classList.remove('active');
+        document.body.style.overflow = 'auto';
+    }
+}
+
+
+function generateSummaries() {
+    const summaries = `
+        <div class="summary-section">
+            <h3>🚀 Where Are We?</h3>
+            <p class="summary-text">
+                <strong>Artemis II</strong> is halfway through its historic <strong>10-day mission</strong> around the Moon. 
+                Our four astronauts (Reid Wiseman, Victor Glover, Christina Koch, and Jeremy Hansen) launched on April 1 and are 
+                now in <strong>deep space</strong>—about <strong>373,000 km (232,000 miles) from Earth</strong>. 
+                They're approaching the Moon for a close flyby on April 6, passing within just <strong>80 km (50 miles)</strong> 
+                of the lunar surface. This is humanity's first crewed deep space mission in over 50 years.
+            </p>
+        </div>
+
+        <div class="summary-section">
+            <h3>👨‍🚀 The Crew</h3>
+            <p class="summary-text">
+                <strong>Reid Wiseman (Commander)</strong>—a Navy pilot with ISS experience, leads the mission.
+                <br><strong>Victor Glover (Pilot)</strong>—historic first African American spacecraft pilot.
+                <br><strong>Christina Koch (Mission Specialist)</strong>—holds the record for longest spacewalk by a woman.
+                <br><strong>Jeremy Hansen (Mission Specialist, Canadian)</strong>—first Canadian to fly beyond Earth orbit.
+                <br><br>All four are in excellent health, maintaining the spacecraft, and preparing for the lunar close approach.
+            </p>
+        </div>
+
+        <div class="summary-section">
+            <h3>⏰ What's Next?</h3>
+            <p class="summary-text">
+                <strong>April 6:</strong> Closest approach to the Moon at 80 km altitude—the highlight of the mission.
+                <br><strong>April 8:</strong> Begin the journey home via a <strong>"free-return trajectory"</strong> (a path that naturally loops back to Earth).
+                <br><strong>April 11:</strong> Splash down in the Pacific Ocean near San Diego.
+                <br><br>The entire mission demonstrates critical technologies NASA will use for its <strong>Artemis III moon landing</strong> later this decade.
+            </p>
+        </div>
+
+        <div class="summary-section">
+            <h3>🛰️ How We Stay in Touch</h3>
+            <p class="summary-text">
+                The spacecraft communicates with NASA's <strong>Deep Space Network</strong>—a global system of giant radio antennas. 
+                Right now, the Goldstone station in California is providing communications. All systems are <strong>nominal</strong> 
+                (working perfectly). Power comes from advanced <strong>solar arrays</strong>, and the crew has plenty of air, water, 
+                and food for the mission.
+            </p>
+        </div>
+
+        <div class="summary-section">
+            <h3>📊 Live Status</h3>
+            <p class="summary-text">
+                <strong>Velocity:</strong> The spacecraft is moving at 0.64 km/s (1,430 mph).
+                <br><strong>Temperature:</strong> Inside, a comfortable 22°C (72°F). Outside, a brutal -150°C (-238°F).
+                <br><strong>Fuel:</strong> 85% remaining for mid-course corrections and return maneuvers.
+                <br><strong>Radiation:</strong> Crew is monitoring radiation levels, which are higher in deep space than in Earth orbit but within safe limits.
+                <br><br>For detailed telemetry, <a href="javascript:toggleSummaryMode()">click here to view the technical dashboard</a>.
+            </p>
+        </div>
+
+        <div class="summary-section">
+            <h3>❓ Why This Matters</h3>
+            <p class="summary-text">
+                Artemis II is a test run for getting humans back to the Moon. Everything learned here—from deep space navigation 
+                to life support systems—directly feeds into <strong>Artemis III</strong>, which will land astronauts on the lunar surface 
+                for the first time since 1972. Success on this mission paves the way for permanent human presence on the Moon 
+                and eventual missions to Mars.
+            </p>
+        </div>
+
+        <div class="summary-section">
+            <h3>🔗 Learn More</h3>
+            <p class="summary-text">
+                <a href="https://www.nasa.gov/mission/artemis-ii/" target="_blank">Official NASA Artemis II Page</a> | 
+                <a href="https://eyes.nasa.gov/apps/solar-system/#/sc_artemis_2" target="_blank">Track the Spacecraft with NASA's Eyes</a> | 
+                <a href="https://www.nasa.gov/feature/our-artemis-crew/" target="_blank">Meet the Crew</a> | 
+                <a href="https://deepspace.jpl.nasa.gov/" target="_blank">Deep Space Network Status</a>
+            </p>
+        </div>
+    `;
+    
+    document.getElementById('summary-content').innerHTML = summaries;
+}
 
 function startMETTimer() {
     const launchTime = new Date('2026-04-01T22:35:00Z');
