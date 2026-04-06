@@ -34,6 +34,8 @@
         <span class="value" id="nasa-link-state">SYNC PENDING</span>
       </div>
 
+      <button id="summary-toggle" class="summary-toggle" type="button">PLAIN TEXT SUMMARY</button>
+
       <div class="cursor-wrap" aria-hidden="true">
         <span>CONSOLE LINK</span>
         <span class="cursor"></span>
@@ -49,6 +51,51 @@
       <h2>LIVE TELEMETRY // PRIMARY CONSOLE</h2>
 
       <div class="telemetry-grid">
+        <div class="metric"><span class="metric-label">VELOCITY</span><span class="metric-value" id="velocity">0</span><span class="metric-unit">mph</span></div>
+        <div class="metric"><span class="metric-label">DISTANCE FROM EARTH</span><span class="metric-value" id="distance">0</span><span class="metric-unit">mi</span></div>
+        <div class="metric"><span class="metric-label">ALTITUDE</span><span class="metric-value" id="altitude">0</span><span class="metric-unit">mi</span></div>
+        <div class="metric" id="comms-card"><span class="metric-label">COMMUNICATION STATUS</span><span class="metric-value metric-text" id="comms">LOCKED</span><span class="metric-unit">deep space network</span></div>
+      </div>
+
+      <section class="subpanel">
+        <h3>ENGINEERING CHANNEL</h3>
+        <div class="dense-grid">
+          <div class="dense-item"><span>ACCELERATION</span><strong id="acceleration">0.00 g</strong></div>
+          <div class="dense-item"><span>TRAJECTORY ERROR</span><strong id="trajectory-error">0.00°</strong></div>
+          <div class="dense-item"><span>FUEL REMAINING</span><strong id="fuel">100.0%</strong></div>
+          <div class="dense-item"><span>POWER RESERVE</span><strong id="power">100.0%</strong></div>
+          <div class="dense-item"><span>CABIN PRESSURE</span><strong id="pressure">14.7 psi</strong></div>
+          <div class="dense-item"><span>CABIN TEMP</span><strong id="cabin-temp">72.0 °F</strong></div>
+          <div class="dense-item"><span>RADIATION DOSE</span><strong id="radiation">0.00 mSv/h</strong></div>
+          <div class="dense-item"><span>SIGNAL DELAY</span><strong id="signal-delay">0.00 s</strong></div>
+          <div class="dense-item"><span>DSN ANTENNA</span><strong id="dsn-node">GOLDSTONE DSS-24</strong></div>
+          <div class="dense-item"><span>FLIGHT MODE</span><strong id="flight-mode">ASCENT GUIDANCE</strong></div>
+          <div class="dense-item"><span>CO2 PARTIAL PRESSURE</span><strong id="co2-level">2.8 mmHg</strong></div>
+          <div class="dense-item"><span>BATTERY BUS</span><strong id="battery-bus">28.0 V</strong></div>
+        </div>
+      </section>
+
+      <section class="subpanel">
+        <h3>CREW BIOMED STREAM</h3>
+        <div class="dense-grid">
+          <div class="dense-item"><span>CDR HR / SPO2</span><strong id="cdr-vitals">78 bpm / 99%</strong></div>
+          <div class="dense-item"><span>PILOT HR / SPO2</span><strong id="pilot-vitals">75 bpm / 98%</strong></div>
+          <div class="dense-item"><span>MS1 HR / SPO2</span><strong id="ms1-vitals">74 bpm / 99%</strong></div>
+          <div class="dense-item"><span>MS2 HR / SPO2</span><strong id="ms2-vitals">76 bpm / 98%</strong></div>
+        </div>
+      </section>
+
+      <section class="subpanel">
+        <h3>NASA LIVE FEEDS</h3>
+        <div class="dense-grid nasa-grid">
+          <div class="dense-item"><span>APOD TITLE</span><strong id="apod-title">Loading...</strong></div>
+          <div class="dense-item"><span>APOD DATE</span><strong id="apod-date">----</strong></div>
+          <div class="dense-item"><span>SOLAR EVENTS (7D)</span><strong id="solar-events">Loading...</strong></div>
+          <div class="dense-item"><span>NEO CLOSE APPROACH (7D)</span><strong id="neo-events">Loading...</strong></div>
+          <div class="dense-item"><span>FEED LAST UPDATE</span><strong id="nasa-updated">Awaiting sync</strong></div>
+          <div class="dense-item"><span>NETWORK MODE</span><strong id="nasa-mode">DEGRADED</strong></div>
+        </div>
+      </section>
         <div class="metric">
           <span class="metric-label">VELOCITY</span>
           <span class="metric-value" id="velocity">0</span>
@@ -127,6 +174,14 @@
       <div class="systems-grid" id="systems-grid"></div>
     </section>
   </div>
+
+  <aside id="summary-panel" class="summary-panel" aria-hidden="true">
+    <div class="summary-header">
+      <h2>PLAIN TEXT SUMMARY // ARTEMIS II</h2>
+      <button id="summary-close" class="summary-close" type="button">CLOSE</button>
+    </div>
+    <div id="summary-content" class="summary-content"></div>
+  </aside>
 
   <script src="script.js"></script>
 </body>
