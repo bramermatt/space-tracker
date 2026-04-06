@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Artemis II Mission Tracker - NASA Data</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <div class="live-header">
+            <div class="live-status">
+                <span class="live-dot">●</span> Artemis II LIVE - NASA Data Feed
+            </div>
+            <button class="nasa-eyes-btn" onclick="toggleNASAEyes()">🚀 NASA's Eyes</button>
+        </div>
+        <h1>Artemis II Mission Tracker</h1>
+        <div class="mission-times">
+            <div class="time-item">
+                <span class="label">LAUNCH</span>
+                <span class="value">1 Apr 2026 22:35 UTC</span>
+            </div>
+            <div class="time-item">
+                <span class="label">SPLASHDOWN</span>
+                <span class="value">11 Apr 2026 00:21 UTC</span>
+            </div>
+            <div class="time-item">
+                <span class="label">DURATION</span>
+                <span class="value">9d 2h</span>
+            </div>
+            <div class="time-item">
+                <span class="label">MET</span>
+                <span class="value" id="met-timer">T+4d 02:48:16</span>
+            </div>
+        </div>
+    </header>
+
+    <div class="layout">
+        <aside id="page-nav" class="page-nav">
+            <div class="nav-header">
+                <h2>Contents</h2>
+                <button class="close-nav" onclick="toggleNav()">×</button>
+            </div>
+            <nav>
+                <a href="#mission-overview" onclick="closeNav()">Mission Overview</a>
+                <a href="#crew" onclick="closeNav()">Crew</a>
+                <a href="#timeline" onclick="closeNav()">Mission Timeline</a>
+                <a href="#position" onclick="closeNav()">Current Position</a>
+                <a href="#telemetry" onclick="closeNav()">Telemetry</a>
+                <a href="#livestream" onclick="closeNav()">Live Stream</a>
+                <a href="#resources" onclick="closeNav()">Resources</a>
+                <a href="#live-data" onclick="closeNav()">Live Mission Data</a>
+            </nav>
+        </aside>
+
+        <main>
+            <section id="mission-overview">
+                <h2>Mission Overview</h2>
+                <div id="overview-content">
+                    <!-- Mission data from NASA -->
+                </div>
+            </section>
+
+        <section id="crew">
+            <h2>Crew</h2>
+            <div id="crew-content">
+                <!-- Crew data from NASA -->
+            </div>
+        </section>
+
+        <section id="timeline">
+            <h2>Mission Timeline</h2>
+            <div id="timeline-content">
+                <!-- Timeline data from NASA -->
+            </div>
+        </section>
+
+        <section id="position">
+            <h2>Current Position</h2>
+            <div id="position-content">
+                <!-- Position data from NASA -->
+            </div>
+        </section>
+
+        <section id="telemetry">
+            <h2>Telemetry</h2>
+            <div id="telemetry-content">
+                <!-- Telemetry data from NASA -->
+            </div>
+        </section>
+
+        <!-- <section id="media">
+            <h2>Media</h2>
+            <div id="media-content">
+            </div>
+        </section> -->
+
+        <section id="livestream">
+            <h2>NASA Live Stream</h2>
+            <div id="livestream-content">
+                <!-- NASA's YouTube live stream -->
+            </div>
+        </section>
+
+        <section id="resources">
+            <h2>NASA Resources & Links</h2>
+            <div id="resources-content">
+                <!-- Links to NASA resources -->
+            </div>
+        </section>
+
+        <section id="live-data">
+            <h2>Live Mission Data - NASA Sources</h2>
+            <div id="live-data-content">
+                <!-- Comprehensive NASA data -->
+            </div>
+        </section>
+    </main>
+    </div>
+
+    <button id="menu-toggle" class="menu-toggle" onclick="toggleNav()" aria-label="Open contents">☰</button>
+
+    <footer>
+        <p>Data provided by NASA | <a href="https://api.nasa.gov/" target="_blank">NASA APIs</a> | <a href="https://www.nasa.gov/" target="_blank">NASA.gov</a></p>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
